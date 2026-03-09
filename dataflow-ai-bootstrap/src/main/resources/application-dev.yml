@@ -1,0 +1,53 @@
+# 开发环境配置
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dataflow_ai
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+  sql:
+    init:
+      mode: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  jwt:
+    secret: dev-secret-key-for-local-development-only-change-in-production-256bits
+    expiration: 604800000  # 开发环境7天
+
+  encryption:
+    key: dev-encryption-key-for-local-development-32-bytes
+
+  permission:
+    enabled: true
+
+# 开发环境日志
+logging:
+  level:
+    root: INFO
+    com.dataflow.ai: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    io.swagger: DEBUG
+  file:
+    name: logs/dataflow-ai-dev.log

@@ -1,0 +1,145 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: dataflow-ai
+  profiles:
+    active: dev
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 50
+          order_inserts: true
+          order_updates: true
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# 应用配置
+app:
+  name: DataFlow AI
+  description: AI-powered data transformation platform
+
+  # JWT配置
+  jwt:
+    secret: ${JWT_SECRET:your-secret-key-change-in-production-min-256-bits-long}
+    expiration: ${JWT_EXPIRATION:86400000}  # 24小时
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7天
+
+  # 加密配置
+  encryption:
+    key: ${ENCRYPTION_KEY:your-encryption-key-change-in-production-32-bytes}
+
+  # LLM配置
+  llm:
+    provider: ${LLM_PROVIDER:openai}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      model: ${OPENAI_MODEL:gpt-4}
+      max-tokens: ${OPENAI_MAX_TOKENS:4000}
+      temperature: ${OPENAI_TEMPERATURE:0.7}
+    zhipu:
+      api-key: ${ZHIPU_API_KEY:}
+      base-url: ${ZHIPU_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+      model: ${ZHIPU_MODEL:glm-4}
+      max-tokens: ${ZHIPU_MAX_TOKENS:4000}
+      temperature: ${ZHIPU_TEMPERATURE:0.7}
+
+  # Embedding配置
+  embedding:
+    provider: ${EMBEDDING_PROVIDER:openai}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+      dimensions: ${OPENAI_EMBEDDING_DIMENSIONS:1536}
+    zhipu:
+      api-key: ${ZHIPU_API_KEY:}
+      model: ${ZHIPU_EMBEDDING_MODEL:embedding-2}
+      dimensions: ${ZHIPU_EMBEDDING_DIMENSIONS:1024}
+
+  # 权限配置
+  permission:
+    enabled: ${PERMISSION_ENABLED:true}
+    default-mask-type: ${DEFAULT_MASK_TYPE:PARTIAL}
+
+  # 异步配置
+  async:
+    core-pool-size: ${ASYNC_CORE_POOL_SIZE:5}
+    max-pool-size: ${ASYNC_MAX_POOL_SIZE:20}
+    queue-capacity: ${ASYNC_QUEUE_CAPACITY:100}
+    thread-name-prefix: async-
+
+# Knife4j配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  show-actuator: false
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+    enable-swagger-models: true
+    enable-document-manage: true
+    swagger-model-name: 实体类列表
+    enable-version: true
+    enable-reload-cache-parameter: false
+    enable-after-script: true
+    enable-filter-multipart-api-method-type: POST
+    enable-request-cache: true
+    enable-host-text: localhost:8080
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.dataflow.ai: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"

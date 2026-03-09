@@ -1,0 +1,88 @@
+# 生产环境配置
+
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+          order_inserts: true
+          order_updates: true
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: 28800000  # 生产环境8小时
+    refresh-expiration: 604800000  # 7天
+
+  encryption:
+    key: ${ENCRYPTION_KEY}
+
+  llm:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      model: ${OPENAI_MODEL:gpt-4}
+    zhipu:
+      api-key: ${ZHIPU_API_KEY}
+      base-url: ${ZHIPU_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+      model: ${ZHIPU_MODEL:glm-4}
+
+  embedding:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+    zhipu:
+      api-key: ${ZHIPU_API_KEY}
+      model: ${ZHIPU_EMBEDDING_MODEL:embedding-2}
+
+  permission:
+    enabled: ${PERMISSION_ENABLED:true}
+
+# 生产环境日志
+logging:
+  level:
+    root: WARN
+    com.dataflow.ai: INFO
+  file:
+    name: /var/log/dataflow-ai/application.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 10GB
