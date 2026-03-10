@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AIServiceImpl implements AIService {
 
-    @Qualifier("openAIClient")
-    private final LLMClient llmClient;
+    @Resource(name = "openAIClient")
+    private LLMClient llmClient;
 
     private final EmbeddingClient embeddingClient;
 

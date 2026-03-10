@@ -1,6 +1,7 @@
 package com.dataflow.ai.infrastructure.client.embedding;
 
 import com.dataflow.ai.infrastructure.client.llm.LLMClient;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -14,8 +15,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class EmbeddingClient {
 
-    @Qualifier("openAIClient")
-    private final LLMClient llmClient;
+    @Resource(name = "openAIClient")
+    private LLMClient llmClient;
 
     /**
      * 生成文本的Embedding向量

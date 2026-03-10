@@ -37,3 +37,15 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### logs ###
+*.log
+*.out
+*.err
+*.txt
+logs/
+!**/src/main/**/logs/
+!**/src/test/**/logs/
+
+
+

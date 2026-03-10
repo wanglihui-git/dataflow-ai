@@ -37,20 +37,4 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
-        return new org.springframework.security.crypto.password.PasswordEncoder() {
-            private final PasswordEncoder delegate = new PasswordEncoder();
-
-            @Override
-            public String encode(CharSequence rawPassword) {
-                return delegate.encode(rawPassword.toString());
-            }
-
-            @Override
-            public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                return delegate.matches(rawPassword.toString(), encodedPassword);
-            }
-        };
-    }
 }
