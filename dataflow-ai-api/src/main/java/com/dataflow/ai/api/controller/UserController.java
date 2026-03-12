@@ -4,8 +4,10 @@ import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.common.dto.ApiResponse;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
+import com.dataflow.ai.domain.request.CreateUserRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,7 +20,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/v1/users")
 @RequiredArgsConstructor
 @Tag(name = "用户", description = "用户管理相关接口")
 public class UserController {
@@ -44,14 +46,15 @@ public class UserController {
     @PostMapping
     @Operation(summary = "创建用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<User> create(
-            @RequestParam String username,
-            @RequestParam String email,
-            @RequestParam String password,
-            @RequestParam UserRole role,
-            @RequestParam(required = false) String department) {
-        log.info("Create user: {}", username);
-        User user = userService.createUser(username, email, password, role, department);
+    public ApiResponse<User> create(@RequestBody @Valid CreateUserRequest request) {
+        log.info("Creating user: {}", request.getUsername());
+        User user = userService.createUser(
+                request.getUsername(),
+                request.getEmail(),
+                request.getPassword(),
+                request.getRole(),
+                request.getDepartment()
+        );
         return ApiResponse.ofSuccess(user);
     }
 

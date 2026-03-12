@@ -18,10 +18,10 @@ import java.util.Map;
 @Component
 public class JwtProvider {
 
-    @Value("${jwt.secret:defaultSecretKeyForDataflowAI2024}")
+    @Value("${app.jwt.secret:defaultSecretKeyForDataflowAI2024PleaseChangeMe}")
     private String secret;
 
-    @Value("${jwt.expiration:86400000}")
+    @Value("${app.jwt.expiration:86400000}")
     private long expiration; // 默认24小时
 
     private Key getSigningKey() {

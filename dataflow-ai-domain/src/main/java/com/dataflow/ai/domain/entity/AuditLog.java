@@ -1,5 +1,6 @@
 package com.dataflow.ai.domain.entity;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,11 +16,15 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "audit_logs")
 public class AuditLog {
 
     /**
      * 日志ID
      */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
@@ -45,6 +50,7 @@ public class AuditLog {
     /**
      * 详细信息
      */
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> details;
 
     /**

@@ -18,7 +18,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/data-sources")
+@RequestMapping("/v1/data-sources")
 @RequiredArgsConstructor
 @Tag(name = "数据源", description = "数据源管理相关接口")
 public class DataSourceController {

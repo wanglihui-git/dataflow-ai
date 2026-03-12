@@ -2,6 +2,7 @@ package com.dataflow.ai.domain.entity;
 
 import com.dataflow.ai.domain.enums.AccessType;
 import com.dataflow.ai.domain.enums.UserRole;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,11 +17,14 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "data_field_permissions")
 public class DataFieldPermission {
 
     /**
      * 权限ID
      */
+    @Id
     private String id;
 
     /**
@@ -36,6 +40,7 @@ public class DataFieldPermission {
     /**
      * 目标角色
      */
+    @Enumerated(EnumType.STRING)
     private UserRole targetRole;
 
     /**
@@ -51,6 +56,7 @@ public class DataFieldPermission {
     /**
      * 访问类型
      */
+    @Enumerated(EnumType.STRING)
     private AccessType accessType;
 
     /**

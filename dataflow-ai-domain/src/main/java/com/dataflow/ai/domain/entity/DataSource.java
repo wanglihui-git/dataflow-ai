@@ -1,6 +1,7 @@
 package com.dataflow.ai.domain.entity;
 
 import com.dataflow.ai.domain.enums.DataSourceType;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,11 +17,14 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "data_sources")
 public class DataSource {
 
     /**
      * 数据源ID
      */
+    @Id
     private String id;
 
     /**
@@ -31,11 +35,13 @@ public class DataSource {
     /**
      * 数据源类型
      */
+    @Enumerated(EnumType.STRING)
     private DataSourceType type;
 
     /**
      * 连接配置（加密存储）
      */
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> connectionConfig;
 
     /**

@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/execution")
+@RequestMapping("/v1/execution")
 @RequiredArgsConstructor
 @Tag(name = "执行", description = "执行管理相关接口")
 public class ExecutionController {

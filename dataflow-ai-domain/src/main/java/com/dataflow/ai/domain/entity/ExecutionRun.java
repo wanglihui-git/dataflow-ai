@@ -1,6 +1,7 @@
 package com.dataflow.ai.domain.entity;
 
 import com.dataflow.ai.domain.enums.ExecutionStatus;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,11 +17,14 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "execution_runs")
 public class ExecutionRun {
 
     /**
      * 执行记录ID
      */
+    @Id
     private String id;
 
     /**
@@ -31,6 +35,7 @@ public class ExecutionRun {
     /**
      * 执行状态
      */
+    @Enumerated(EnumType.STRING)
     private ExecutionStatus status;
 
     /**
@@ -51,11 +56,13 @@ public class ExecutionRun {
     /**
      * 执行日志
      */
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> executionLog;
 
     /**
      * 指标数据
      */
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> metrics;
 
     /**

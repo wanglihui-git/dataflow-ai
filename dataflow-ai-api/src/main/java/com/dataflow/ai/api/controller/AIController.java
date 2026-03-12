@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/ai")
+@RequestMapping("/v1/ai")
 @RequiredArgsConstructor
 @Tag(name = "AI辅助", description = "AI辅助相关接口")
 public class AIController {

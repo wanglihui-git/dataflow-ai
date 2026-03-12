@@ -1,59 +1,56 @@
 package com.dataflow.ai.business.repository.impl;
 
 import com.dataflow.ai.business.repository.AiHelperRepository;
+import com.dataflow.ai.business.repository.jpa.AiHelperJpaRepository;
 import com.dataflow.ai.domain.entity.AiHelper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
- * AI辅助Repository实现（内存存储版本）
+ * AI辅助Repository实现（PostgreSQL）
  */
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class AiHelperRepositoryImpl implements AiHelperRepository {
 
-    private final Map<String, AiHelper> aiHelpers = new ConcurrentHashMap<>();
+    private final AiHelperJpaRepository jpaRepository;
 
     @Override
     public Optional<AiHelper> findById(String id) {
-        return Optional.ofNullable(aiHelpers.get(id));
+        return jpaRepository.findById(id);
     }
 
     @Override
     public List<AiHelper> findByCreatedBy(String createdBy) {
-        return aiHelpers.values().stream()
-                .filter(h -> h.getCreatedBy().equals(createdBy))
-                .collect(Collectors.toList());
+        return jpaRepository.findByCreatedBy(createdBy);
     }
 
     @Override
     public List<AiHelper> findByPipelineId(String pipelineId) {
-        return aiHelpers.values().stream()
-                .filter(h -> h.getPipelineId() != null && h.getPipelineId().equals(pipelineId))
-                .collect(Collectors.toList());
+        return jpaRepository.findByPipelineId(pipelineId);
     }
 
     @Override
     public List<AiHelper> findWithoutFeedback() {
-        return aiHelpers.values().stream()
-                .filter(h -> h.getUserFeedback() == null)
-                .collect(Collectors.toList());
+        return jpaRepository.findWithoutFeedback();
     }
 
     @Override
     public List<AiHelper> searchByEmbedding(float[] embedding, double threshold, int limit) {
-        // TODO: 实现向量相似度搜索
-        return aiHelpers.values().stream()
-                .limit(limit)
-                .collect(Collectors.toList());
+        String vectorLiteral = toVectorLiteral(embedding);
+        return jpaRepository.searchByEmbedding(vectorLiteral, threshold, limit);
     }
 
     @Override
+    @Transactional
     public AiHelper save(AiHelper aiHelper) {
         if (aiHelper.getId() == null) {
             aiHelper.setId(UUID.randomUUID().toString());
@@ -61,24 +58,37 @@ public class AiHelperRepositoryImpl implements AiHelperRepository {
         if (aiHelper.getCreatedAt() == null) {
             aiHelper.setCreatedAt(LocalDateTime.now());
         }
-        aiHelpers.put(aiHelper.getId(), aiHelper);
-        return aiHelper;
+        return jpaRepository.save(aiHelper);
     }
 
     @Override
+    @Transactional
     public void deleteById(String id) {
-        aiHelpers.remove(id);
+        jpaRepository.deleteById(id);
     }
 
     @Override
     public List<AiHelper> findAll() {
-        return new ArrayList<>(aiHelpers.values());
+        return jpaRepository.findAll();
     }
 
     @Override
     public long countByUserFeedback(Integer feedback) {
-        return aiHelpers.values().stream()
-                .filter(h -> feedback.equals(h.getUserFeedback()))
-                .count();
+        return jpaRepository.countByUserFeedback(feedback);
+    }
+
+    /**
+     * 将 float[] 转换为 pgvector 文字量格式，例如 "[1.0,2.0,3.0]"
+     */
+    private String toVectorLiteral(float[] embedding) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < embedding.length; i++) {
+            sb.append(embedding[i]);
+            if (i < embedding.length - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

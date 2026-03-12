@@ -20,7 +20,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/pipelines")
+@RequestMapping("/v1/pipelines")
 @RequiredArgsConstructor
 @Tag(name = "Pipeline", description = "Pipeline管理相关接口")
 public class PipelineController {

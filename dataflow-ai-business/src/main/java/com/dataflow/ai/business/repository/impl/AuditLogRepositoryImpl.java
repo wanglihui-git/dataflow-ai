@@ -1,88 +1,75 @@
 package com.dataflow.ai.business.repository.impl;
 
 import com.dataflow.ai.business.repository.AuditLogRepository;
+import com.dataflow.ai.business.repository.jpa.AuditLogJpaRepository;
 import com.dataflow.ai.domain.entity.AuditLog;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * 审计日志Repository实现（内存存储版本）
+ * 审计日志Repository实现（PostgreSQL）
  */
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class AuditLogRepositoryImpl implements AuditLogRepository {
 
-    private final Map<Long, AuditLog> auditLogs = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(1);
+    private final AuditLogJpaRepository jpaRepository;
 
     @Override
     public Optional<AuditLog> findById(Long id) {
-        return Optional.ofNullable(auditLogs.get(id));
+        return jpaRepository.findById(id);
     }
 
     @Override
     public List<AuditLog> findByUserId(String userId) {
-        return auditLogs.values().stream()
-                .filter(log -> log.getUserId().equals(userId))
-                .collect(Collectors.toList());
+        return jpaRepository.findByUserId(userId);
     }
 
     @Override
     public List<AuditLog> findByAction(String action) {
-        return auditLogs.values().stream()
-                .filter(log -> log.getAction().equals(action))
-                .collect(Collectors.toList());
+        return jpaRepository.findByAction(action);
     }
 
     @Override
     public List<AuditLog> findByResourceTypeAndResourceId(String resourceType, String resourceId) {
-        return auditLogs.values().stream()
-                .filter(log -> log.getResourceType().equals(resourceType) && log.getResourceId().equals(resourceId))
-                .collect(Collectors.toList());
+        return jpaRepository.findByResourceTypeAndResourceId(resourceType, resourceId);
     }
 
     @Override
     public List<AuditLog> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end) {
-        return auditLogs.values().stream()
-                .filter(log -> !log.getCreatedAt().isBefore(start) && !log.getCreatedAt().isAfter(end))
-                .collect(Collectors.toList());
+        return jpaRepository.findByCreatedAtBetween(start, end);
     }
 
     @Override
+    @Transactional
     public AuditLog save(AuditLog auditLog) {
-        if (auditLog.getId() == null) {
-            auditLog.setId(idGenerator.getAndIncrement());
-        }
         if (auditLog.getCreatedAt() == null) {
             auditLog.setCreatedAt(LocalDateTime.now());
         }
-        auditLogs.put(auditLog.getId(), auditLog);
-        return auditLog;
+        return jpaRepository.save(auditLog);
     }
 
     @Override
+    @Transactional
     public void deleteById(Long id) {
-        auditLogs.remove(id);
+        jpaRepository.deleteById(id);
     }
 
     @Override
     public List<AuditLog> findAll() {
-        return new ArrayList<>(auditLogs.values());
+        return jpaRepository.findAll();
     }
 
     @Override
+    @Transactional
     public long deleteBefore(LocalDateTime beforeTime) {
-        List<Long> toDelete = auditLogs.values().stream()
-                .filter(log -> log.getCreatedAt().isBefore(beforeTime))
-                .map(AuditLog::getId)
-                .toList();
-        toDelete.forEach(auditLogs::remove);
-        return toDelete.size();
+        return jpaRepository.deleteByCreatedAtBefore(beforeTime);
     }
 }

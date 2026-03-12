@@ -9,12 +9,13 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         use_sql_comments: true
+        metadata_builder_contributor: com.dataflow.ai.business.persistence.VectorTypeContributor
 
   sql:
     init:

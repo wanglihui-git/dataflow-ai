@@ -1,52 +1,51 @@
 package com.dataflow.ai.business.repository.impl;
 
 import com.dataflow.ai.business.repository.ExecutionRunRepository;
+import com.dataflow.ai.business.repository.jpa.ExecutionRunJpaRepository;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
- * 执行记录Repository实现（内存存储版本）
+ * 执行记录Repository实现（PostgreSQL）
  */
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class ExecutionRunRepositoryImpl implements ExecutionRunRepository {
 
-    private final Map<String, ExecutionRun> executionRuns = new ConcurrentHashMap<>();
+    private final ExecutionRunJpaRepository jpaRepository;
 
     @Override
     public Optional<ExecutionRun> findById(String id) {
-        return Optional.ofNullable(executionRuns.get(id));
+        return jpaRepository.findById(id);
     }
 
     @Override
     public List<ExecutionRun> findByPipelineId(String pipelineId) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getPipelineId().equals(pipelineId))
-                .collect(Collectors.toList());
+        return jpaRepository.findByPipelineId(pipelineId);
     }
 
     @Override
     public List<ExecutionRun> findByPipelineIdAndStatus(String pipelineId, ExecutionStatus status) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getPipelineId().equals(pipelineId) && r.getStatus() == status)
-                .collect(Collectors.toList());
+        return jpaRepository.findByPipelineIdAndStatus(pipelineId, status);
     }
 
     @Override
     public List<ExecutionRun> findByTriggeredBy(String triggeredBy) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getTriggeredBy().equals(triggeredBy))
-                .collect(Collectors.toList());
+        return jpaRepository.findByTriggeredBy(triggeredBy);
     }
 
     @Override
+    @Transactional
     public ExecutionRun save(ExecutionRun executionRun) {
         if (executionRun.getId() == null) {
             executionRun.setId(UUID.randomUUID().toString());
@@ -54,33 +53,27 @@ public class ExecutionRunRepositoryImpl implements ExecutionRunRepository {
         if (executionRun.getCreatedAt() == null) {
             executionRun.setCreatedAt(LocalDateTime.now());
         }
-        executionRuns.put(executionRun.getId(), executionRun);
-        return executionRun;
+        return jpaRepository.save(executionRun);
     }
 
     @Override
+    @Transactional
     public void deleteById(String id) {
-        executionRuns.remove(id);
+        jpaRepository.deleteById(id);
     }
 
     @Override
     public Optional<ExecutionRun> findLatestByPipelineId(String pipelineId) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getPipelineId().equals(pipelineId))
-                .max(Comparator.comparing(ExecutionRun::getStartTime));
+        return jpaRepository.findLatestByPipelineId(pipelineId);
     }
 
     @Override
     public long countByPipelineId(String pipelineId) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getPipelineId().equals(pipelineId))
-                .count();
+        return jpaRepository.countByPipelineId(pipelineId);
     }
 
     @Override
     public long countByPipelineIdAndStatus(String pipelineId, ExecutionStatus status) {
-        return executionRuns.values().stream()
-                .filter(r -> r.getPipelineId().equals(pipelineId) && r.getStatus() == status)
-                .count();
+        return jpaRepository.countByPipelineIdAndStatus(pipelineId, status);
     }
 }

@@ -1,6 +1,7 @@
 package com.dataflow.ai.domain.entity;
 
 import com.dataflow.ai.domain.vo.Transform;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,11 +18,14 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "ai_helpers")
 public class AiHelper {
 
     /**
      * 记录ID
      */
+    @Id
     private String id;
 
     /**
@@ -32,11 +36,14 @@ public class AiHelper {
     /**
      * 上下文信息
      */
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> context;
 
     /**
      * 生成的转换节点
      */
+    @Convert(converter = com.dataflow.ai.domain.converter.TransformListConverter.class)
+    @Column(columnDefinition = "jsonb")
     private List<Transform> generatedNodes;
 
     /**
@@ -52,6 +59,7 @@ public class AiHelper {
     /**
      * 指令的向量表示（用于相似度搜索）
      */
+    @Column(name = "embedding")
     private float[] embedding;
 
     /**
