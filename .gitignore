@@ -9,6 +9,16 @@ target/
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/dataSources.local.xml
+.idea/dataSources.xml
+.idea/misc.xml
+.idea/vcs.xml
+.idea/shelf/
+.idea/workspace.xml
+.idea# 基于编辑器的 HTTP 客户端请求
+.idea/httpRequests/
+.idea# Datasource local storage ignored files
+.idea/dataSources/
 *.iws
 *.iml
 *.ipr
@@ -46,6 +56,4 @@ build/
 logs/
 !**/src/main/**/logs/
 !**/src/test/**/logs/
-
-
 
