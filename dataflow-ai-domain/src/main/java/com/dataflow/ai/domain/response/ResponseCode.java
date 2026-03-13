@@ -1,4 +1,4 @@
-package com.dataflow.ai.common.dto;
+package com.dataflow.ai.domain.response;
 
 import lombok.Getter;
 

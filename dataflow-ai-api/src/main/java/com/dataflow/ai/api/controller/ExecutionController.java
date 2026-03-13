@@ -1,7 +1,7 @@
 package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.business.service.ExecutionService;
-import com.dataflow.ai.common.dto.ApiResponse;
+import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 /**

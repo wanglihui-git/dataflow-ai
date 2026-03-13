@@ -3,7 +3,7 @@ package com.dataflow.ai.api.controller;
 import com.dataflow.ai.domain.request.LoginRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.business.service.UserService;
-import com.dataflow.ai.common.dto.ApiResponse;
+import com.dataflow.ai.domain.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

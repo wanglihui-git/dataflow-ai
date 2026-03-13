@@ -2,7 +2,7 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import com.dataflow.ai.business.service.PipelineService;
-import com.dataflow.ai.common.dto.ApiResponse;
+import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import io.swagger.v3.oas.annotations.Operation;

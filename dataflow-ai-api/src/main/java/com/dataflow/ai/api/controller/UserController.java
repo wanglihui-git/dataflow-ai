@@ -1,9 +1,8 @@
 package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.business.service.UserService;
-import com.dataflow.ai.common.dto.ApiResponse;
+import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.User;
-import com.dataflow.ai.domain.enums.UserRole;
 import com.dataflow.ai.domain.request.CreateUserRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

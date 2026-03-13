@@ -6,7 +6,7 @@ import com.dataflow.ai.domain.request.GenerateTransformsRequest;
 import com.dataflow.ai.domain.request.SearchSimilarRequest;
 import com.dataflow.ai.domain.response.GenerateTransformsResponse;
 import com.dataflow.ai.domain.response.SearchSimilarResponse;
-import com.dataflow.ai.common.dto.ApiResponse;
+import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
