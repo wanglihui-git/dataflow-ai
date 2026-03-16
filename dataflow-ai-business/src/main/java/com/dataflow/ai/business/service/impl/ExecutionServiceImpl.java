@@ -1,5 +1,8 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
+import com.dataflow.ai.business.engine.orchestrator.ExecutionResult;
+import com.dataflow.ai.business.engine.orchestrator.PipelineOrchestrator;
 import com.dataflow.ai.business.repository.ExecutionRunRepository;
 import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
@@ -17,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 执行服务实现
@@ -29,8 +33,14 @@ public class ExecutionServiceImpl implements ExecutionService {
     @Resource
     private ExecutionRunRepository executionRunRepository;
 
+    @Resource
+    private PipelineOrchestrator pipelineOrchestrator;
+
     // 存储正在运行的执行任务（用于取消）
-    private final Map<String, Boolean> runningTasks = new ConcurrentHashMap<>();
+    private final Map<String, ExecutionContext> runningContexts = new ConcurrentHashMap<>();
+
+    // 存储取消标志
+    private final Map<String, AtomicBoolean> cancelledFlags = new ConcurrentHashMap<>();
 
     @Override
     public ExecutionRun createExecutionRun(String pipelineId, String triggeredBy) {
@@ -48,29 +58,54 @@ public class ExecutionServiceImpl implements ExecutionService {
     @Override
     @Async
     public void startExecution(String runId, Pipeline pipeline) {
-        runningTasks.put(runId, true);
+        // 获取执行记录
+        Optional<ExecutionRun> executionRunOpt = executionRunRepository.findById(runId);
+        if (executionRunOpt.isEmpty()) {
+            log.error("Execution run not found: runId={}", runId);
+            return;
+        }
+
+        // 创建取消标志
+        AtomicBoolean cancelledFlag = new AtomicBoolean(false);
+        cancelledFlags.put(runId, cancelledFlag);
+
         try {
             updateExecutionStatus(runId, ExecutionStatus.RUNNING);
             log.info("Starting pipeline execution: runId={}, pipelineName={}", runId, pipeline.getName());
 
-            // TODO: 实现实际的Pipeline执行逻辑
-            Thread.sleep(1000); // 模拟执行
+            // 创建执行上下文
+            ExecutionContext context = ExecutionContext.builder()
+                    .runId(runId)
+                    .pipeline(pipeline)
+                    .executionRun(executionRunOpt.get())
+                    .cancelled(false)
+                    .startTime(LocalDateTime.now())
+                    .build();
 
-            // 成功完成
-            Map<String, Object> metrics = Map.of(
-                    "rowsProcessed", 100,
-                    "durationMs", 1000
-            );
-            updateExecutionResult(runId, ExecutionStatus.SUCCESS, null, metrics);
-            log.info("Pipeline execution completed successfully: runId={}", runId);
-        } catch (InterruptedException e) {
-            updateExecutionStatus(runId, ExecutionStatus.CANCELLED);
-            log.warn("Pipeline execution cancelled: runId={}", runId);
+            // 存储上下文用于取消操作
+            runningContexts.put(runId, context);
+
+            // 使用PipelineOrchestrator执行Pipeline
+            ExecutionResult result = pipelineOrchestrator.execute(context);
+
+            // 检查是否被取消
+            if (cancelledFlag.get()) {
+                updateExecutionResult(runId, ExecutionStatus.CANCELLED, "Execution was cancelled", result.getMetrics());
+                log.info("Pipeline execution cancelled: runId={}", runId);
+            } else {
+                // 更新执行结果
+                updateExecutionResult(runId, result.getStatus(), result.getErrorMessage(), result.buildFullMetrics());
+                log.info("Pipeline execution completed: runId={}, status={}, recordsProcessed={}, durationMs={}",
+                        runId, result.getStatus(), result.getRecordsProcessed(), result.getDurationMs());
+            }
+
         } catch (Exception e) {
             updateExecutionResult(runId, ExecutionStatus.FAILED, e.getMessage(), null);
-            log.error("Pipeline execution failed: runId={}", runId, e);
+            log.error("Pipeline execution failed: runId={}, error={}", runId, e.getMessage(), e);
         } finally {
-            runningTasks.remove(runId);
+            // 清理资源
+            runningContexts.remove(runId);
+            cancelledFlags.remove(runId);
         }
     }
 
@@ -103,7 +138,18 @@ public class ExecutionServiceImpl implements ExecutionService {
 
     @Override
     public void cancelExecution(String runId) {
-        runningTasks.remove(runId);
+        // 设置取消标志
+        AtomicBoolean cancelledFlag = cancelledFlags.get(runId);
+        if (cancelledFlag != null) {
+            cancelledFlag.set(true);
+        }
+
+        // 标记执行上下文为已取消
+        ExecutionContext context = runningContexts.get(runId);
+        if (context != null) {
+            context.markCancelled();
+        }
+
         updateExecutionStatus(runId, ExecutionStatus.CANCELLED);
         log.info("Pipeline execution cancelled: runId={}", runId);
     }
