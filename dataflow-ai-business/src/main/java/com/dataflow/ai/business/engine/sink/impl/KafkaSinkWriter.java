@@ -115,8 +115,8 @@ public class KafkaSinkWriter implements SinkWriter {
                 // 发送消息
                 producer.send(producerRecord, (metadata, exception) -> {
                     if (exception != null) {
-                        log.error("Failed to send message to Kafka: topic={}, key={}",
-                                topic, messageKey, exception);
+                        log.error("Failed to send message to Kafka: topic={}",
+                                topic, exception);
                     }
                 });
 
