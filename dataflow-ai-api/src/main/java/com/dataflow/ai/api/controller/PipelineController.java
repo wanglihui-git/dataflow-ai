@@ -1,5 +1,6 @@
 package com.dataflow.ai.api.controller;
 
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import com.dataflow.ai.business.service.PipelineService;
 import com.dataflow.ai.domain.response.ApiResponse;
@@ -31,8 +32,7 @@ public class PipelineController {
     @Operation(summary = "创建Pipeline")
     public ApiResponse<Pipeline> create(@Valid @RequestBody CreatePipelineRequest request) {
         log.info("Create pipeline: {}", request.getName());
-        // TODO: 从上下文获取当前用户ID
-        String userId = "user_admin";
+        String userId = SecurityUtils.getCurrentUserId();
         Pipeline pipeline = pipelineService.createPipeline(request, userId);
         return ApiResponse.ofSuccess(pipeline);
     }
@@ -43,8 +43,7 @@ public class PipelineController {
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        // TODO: 从上下文获取当前用户ID
-        String userId = "user_admin";
+        String userId = SecurityUtils.getCurrentUserId();
         List<Pipeline> pipelines = pipelineService.findByUser(userId);
         return ApiResponse.ofSuccess(pipelines);
     }
@@ -74,8 +73,7 @@ public class PipelineController {
     @PostMapping("/{id}/run")
     @Operation(summary = "执行Pipeline")
     public ApiResponse<ExecutionRun> run(@PathVariable String id) {
-        // TODO: 从上下文获取当前用户ID
-        String userId = "user_admin";
+        String userId = SecurityUtils.getCurrentUserId();
         ExecutionRun run = pipelineService.executePipeline(id, userId);
         return ApiResponse.ofSuccess(run);
     }

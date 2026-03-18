@@ -1,6 +1,8 @@
 package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.business.service.AIService;
+import com.dataflow.ai.business.service.UserService;
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.request.FeedbackRequest;
 import com.dataflow.ai.domain.request.GenerateTransformsRequest;
 import com.dataflow.ai.domain.request.SearchSimilarRequest;
@@ -26,16 +28,15 @@ import org.springframework.web.bind.annotation.*;
 public class AIController {
 
     private final AIService aiService;
+    private final UserService userService;
 
     @PostMapping("/generate-transforms")
     @Operation(summary = "AI生成转换节点")
     public ApiResponse<GenerateTransformsResponse> generateTransforms(@Valid @RequestBody GenerateTransformsRequest request) {
         log.info("Generate transforms request: {}", request.getInstruction());
-        // TODO: 从上下文获取当前用户
-        User user = User.builder()
-                .id("user_admin")
-                .username("admin")
-                .build();
+        String userId = SecurityUtils.getCurrentUserId();
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
         GenerateTransformsResponse response = aiService.generateTransforms(request, user);
         return ApiResponse.ofSuccess(response);
     }
@@ -52,11 +53,9 @@ public class AIController {
     @Operation(summary = "提交AI反馈")
     public ApiResponse<Void> submitFeedback(@Valid @RequestBody FeedbackRequest request) {
         log.info("Submit feedback: {}", request.getAction());
-        // TODO: 从上下文获取当前用户
-        User user = User.builder()
-                .id("user_admin")
-                .username("admin")
-                .build();
+        String userId = SecurityUtils.getCurrentUserId();
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
         aiService.submitFeedback(request, user);
         return ApiResponse.ofSuccess();
     }

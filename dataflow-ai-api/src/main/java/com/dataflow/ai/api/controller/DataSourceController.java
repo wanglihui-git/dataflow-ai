@@ -1,5 +1,6 @@
 package com.dataflow.ai.api.controller;
 
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.DataSource;
@@ -32,8 +33,7 @@ public class DataSourceController {
             @RequestParam DataSourceType type,
             @RequestBody Map<String, Object> connectionConfig) {
         log.info("Create datasource: {}, type: {}", name, type);
-        // TODO: 从上下文获取当前用户ID
-        String userId = "user_admin";
+        String userId = SecurityUtils.getCurrentUserId();
         DataSource dataSource = dataSourceService.createDataSource(name, type, connectionConfig, userId);
         return ApiResponse.ofSuccess(dataSource);
     }
@@ -41,8 +41,7 @@ public class DataSourceController {
     @GetMapping
     @Operation(summary = "查询数据源列表")
     public ApiResponse<List<DataSource>> list() {
-        // TODO: 从上下文获取当前用户ID
-        String userId = "user_admin";
+        String userId = SecurityUtils.getCurrentUserId();
         List<DataSource> dataSources = dataSourceService.findByCreatedBy(userId);
         return ApiResponse.ofSuccess(dataSources);
     }
