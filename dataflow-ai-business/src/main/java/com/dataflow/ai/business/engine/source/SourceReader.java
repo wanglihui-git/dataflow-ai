@@ -3,6 +3,7 @@ package com.dataflow.ai.business.engine.source;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
+import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SourceConfig;
 
 import java.util.List;
@@ -28,7 +29,7 @@ public interface SourceReader {
      *
      * @return 数据源类型
      */
-    String getSupportedType();
+    DataSourceType getSupportedType();
 
     /**
      * 测试数据源连接

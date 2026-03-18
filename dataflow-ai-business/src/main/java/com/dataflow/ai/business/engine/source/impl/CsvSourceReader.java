@@ -3,10 +3,11 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -30,7 +31,10 @@ import java.util.*;
 public class CsvSourceReader implements SourceReader {
 
     @Resource
-    private SourceReaderFactory sourceReaderFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private static final int DEFAULT_PREVIEW_SIZE = 100;
     private static final int DEFAULT_BUFFER_SIZE = 8192;
@@ -44,13 +48,13 @@ public class CsvSourceReader implements SourceReader {
         log.info("Reading from CSV source: dataSourceId={}, type={}", dataSourceId, type);
 
         // 获取数据源配置
-        DataSource dataSource = sourceReaderFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
 
         if (filePath == null || filePath.trim().isEmpty()) {
@@ -127,13 +131,13 @@ public class CsvSourceReader implements SourceReader {
     }
 
     @Override
-    public String getSupportedType() {
-        return "CSV";
+    public DataSourceType getSupportedType() {
+        return DataSourceType.CSV;
     }
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
 
         if (filePath == null) {

@@ -3,12 +3,13 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.engine.sink.SinkWriterFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SinkConfig;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,10 @@ import java.util.Properties;
 public class KafkaSinkWriter implements SinkWriter {
 
     @Resource
-    private SinkWriterFactory sinkWriterFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -41,14 +45,14 @@ public class KafkaSinkWriter implements SinkWriter {
         log.info("Writing to Kafka sink: dataSourceId={}, batchSize={}", dataSourceId, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = sinkWriterFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.KAFKA, null, null,
                         "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String bootstrapServers = (String) config.get("bootstrapServers");
         String topic = (String) config.get("topic");
         String keyField = (String) config.get("keyField");
@@ -150,7 +154,7 @@ public class KafkaSinkWriter implements SinkWriter {
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String bootstrapServers = (String) config.get("bootstrapServers");
 
         if (bootstrapServers == null) {

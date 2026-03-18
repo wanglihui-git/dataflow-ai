@@ -50,7 +50,7 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>3.6.1</version>
-            <optional>true</optional>
+<!--            <optional>true</optional>-->
         </dependency>
 
         <!-- Spring Web（用于RestTemplate） -->

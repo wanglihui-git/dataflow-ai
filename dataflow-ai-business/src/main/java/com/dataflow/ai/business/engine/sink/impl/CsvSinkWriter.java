@@ -3,12 +3,13 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.engine.sink.SinkWriterFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SinkConfig;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -32,7 +33,10 @@ import java.util.*;
 public class CsvSinkWriter implements SinkWriter {
 
     @Resource
-    private SinkWriterFactory sinkWriterFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
@@ -43,14 +47,14 @@ public class CsvSinkWriter implements SinkWriter {
         log.info("Writing to CSV sink: dataSourceId={}, batchSize={}", dataSourceId, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = sinkWriterFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.CSV, null, null,
                         "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
         char delimiter = parseDelimiter((String) config.get("delimiter"));
         boolean includeHeader = Boolean.TRUE.equals(config.getOrDefault("includeHeader", true));
@@ -133,7 +137,7 @@ public class CsvSinkWriter implements SinkWriter {
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
 
         if (filePath == null) {

@@ -3,12 +3,13 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.engine.sink.SinkWriterFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SinkConfig;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,10 @@ import java.util.*;
 public class DatabaseSinkWriter implements SinkWriter {
 
     @Resource
-    private SinkWriterFactory sinkWriterFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private static final int QUERY_TIMEOUT_SECONDS = 300;
 
@@ -44,14 +48,14 @@ public class DatabaseSinkWriter implements SinkWriter {
                 dataSourceId, tableName, writeMode, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = sinkWriterFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.POSTGRES, tableName, writeMode,
                         "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
         String username = (String) config.get("username");
         String password = (String) config.get("password");
@@ -92,7 +96,7 @@ public class DatabaseSinkWriter implements SinkWriter {
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sinkWriterFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
         String username = (String) config.get("username");
         String password = (String) config.get("password");

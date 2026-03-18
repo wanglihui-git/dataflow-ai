@@ -3,10 +3,11 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -31,7 +33,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class KafkaSourceReader implements SourceReader {
 
     @Resource
-    private SourceReaderFactory sourceReaderFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -48,13 +53,13 @@ public class KafkaSourceReader implements SourceReader {
         log.info("Reading from Kafka source: dataSourceId={}, type={}", dataSourceId, type);
 
         // 获取数据源配置
-        DataSource dataSource = sourceReaderFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String bootstrapServers = (String) config.get("bootstrapServers");
         String topic = (String) config.get("topic");
         String groupId = (String) config.getOrDefault("groupId", "dataflow-ai-consumer");
@@ -158,13 +163,13 @@ public class KafkaSourceReader implements SourceReader {
     }
 
     @Override
-    public String getSupportedType() {
-        return "KAFKA";
+    public DataSourceType getSupportedType() {
+        return DataSourceType.KAFKA;
     }
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String bootstrapServers = (String) config.get("bootstrapServers");
 
         if (bootstrapServers == null) {

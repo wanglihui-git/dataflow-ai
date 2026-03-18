@@ -3,10 +3,11 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -30,7 +31,10 @@ import java.util.UUID;
 public class ApiSourceReader implements SourceReader {
 
     @Resource
-    private SourceReaderFactory sourceReaderFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     @Resource
     private RestTemplate restTemplate;
@@ -48,13 +52,13 @@ public class ApiSourceReader implements SourceReader {
         log.info("Reading from API source: dataSourceId={}, type={}", dataSourceId, type);
 
         // 获取数据源配置
-        DataSource dataSource = sourceReaderFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
         String method = (String) config.getOrDefault("method", "GET");
         @SuppressWarnings("unchecked")
@@ -118,13 +122,13 @@ public class ApiSourceReader implements SourceReader {
     }
 
     @Override
-    public String getSupportedType() {
-        return "API";
+    public DataSourceType getSupportedType() {
+        return DataSourceType.API;
     }
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
 
         try {

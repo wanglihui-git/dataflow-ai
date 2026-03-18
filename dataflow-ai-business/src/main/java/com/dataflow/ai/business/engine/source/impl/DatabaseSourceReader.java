@@ -3,10 +3,11 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,10 @@ import java.util.UUID;
 public class DatabaseSourceReader implements SourceReader {
 
     @Resource
-    private SourceReaderFactory sourceReaderFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private static final int DEFAULT_PREVIEW_SIZE = 100;
     private static final int DEFAULT_FETCH_SIZE = 1000;
@@ -42,13 +46,13 @@ public class DatabaseSourceReader implements SourceReader {
                 dataSourceId, type, sourceConfig.getTableName(), sourceConfig.getQuery());
 
         // 获取数据源配置
-        DataSource dataSource = sourceReaderFactory.getDataSourceById(dataSourceId)
+        DataSource dataSource = dataSourceService.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));
 
         // 获取解密后的连接配置
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
         String username = (String) config.get("username");
         String password = (String) config.get("password");
@@ -117,13 +121,13 @@ public class DatabaseSourceReader implements SourceReader {
     }
 
     @Override
-    public String getSupportedType() {
-        return "DATABASE";
+    public DataSourceType getSupportedType() {
+        return DataSourceType.MYSQL;
     }
 
     @Override
     public boolean testConnection(DataSource dataSource) {
-        Map<String, Object> config = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
         String username = (String) config.get("username");
         String password = (String) config.get("password");

@@ -2,12 +2,13 @@ package com.dataflow.ai.business.engine.transform.impl;
 
 import com.dataflow.ai.business.engine.exception.TransformException;
 import com.dataflow.ai.business.engine.transform.TransformProcessor;
-import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.dto.TransformContext;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.TransformType;
+import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,10 @@ import java.util.*;
 public class LookupProcessor implements TransformProcessor {
 
     @Resource
-    private SourceReaderFactory sourceReaderFactory;
+    private DataSourceService dataSourceService;
+
+    @Resource
+    private EncryptionService encryptionService;
 
     private static final int LOOKUP_CACHE_SIZE = 1000;
 
@@ -65,7 +69,7 @@ public class LookupProcessor implements TransformProcessor {
         }
 
         // 获取数据源连接
-        Optional<DataSource> dataSourceOpt = sourceReaderFactory.getDataSourceById(dataSourceId);
+        Optional<DataSource> dataSourceOpt = dataSourceService.findById(dataSourceId);
         if (dataSourceOpt.isEmpty()) {
             throw TransformException.configurationError(
                     context.getExecutionId(), context.getPipelineId(),
@@ -74,7 +78,7 @@ public class LookupProcessor implements TransformProcessor {
         }
 
         DataSource dataSource = dataSourceOpt.get();
-        Map<String, Object> connectionConfig = sourceReaderFactory.getDecryptedConnectionConfig(dataSource);
+        Map<String, Object> connectionConfig =encryptionService.decrypt(dataSource.getConnectionConfig());;
         String url = (String) connectionConfig.get("url");
         String username = (String) connectionConfig.get("username");
         String password = (String) connectionConfig.get("password");
@@ -150,7 +154,8 @@ public class LookupProcessor implements TransformProcessor {
 
         // 检查缓存
         if (lookupCache.containsKey(cacheKey)) {
-            return lookupCache.get(cacheKey);
+//            return lookupCache.get(cacheKey);
+            return null;
         }
 
         Connection connection = null;
@@ -196,7 +201,7 @@ public class LookupProcessor implements TransformProcessor {
             }
 
             // 缓存结果
-            lookupCache.put(cacheKey, lookupData);
+//            lookupCache.put(cacheKey, lookupData);
 
             log.debug("Lookup data preloaded: table={}, rows={}", table, lookupData.size());
 

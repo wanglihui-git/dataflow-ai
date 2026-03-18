@@ -120,7 +120,7 @@ public class AiAssistedProcessor implements TransformProcessor {
         Map<String, Object> context = new HashMap<>();
         context.put("recordId", record.getId());
         context.put("fields", record.getFieldNames());
-        request.setContext(context);
+//        request.setContext(context);
 
         return request;
     }
@@ -139,6 +139,7 @@ public class AiAssistedProcessor implements TransformProcessor {
                 GenerateTransformsResponse response = aiService.generateTransforms(
                         request, com.dataflow.ai.domain.entity.User.builder().id("system").build());
 
+                /*
                 if (response != null) {
                     // 解析响应
                     if (response.getTransforms() != null && !response.getTransforms().isEmpty()) {
@@ -149,6 +150,8 @@ public class AiAssistedProcessor implements TransformProcessor {
                         return response.getExplanation();
                     }
                 }
+
+                 */
 
                 return null;
 
