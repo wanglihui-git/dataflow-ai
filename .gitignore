@@ -57,3 +57,4 @@ logs/
 !**/src/main/**/logs/
 !**/src/test/**/logs/
 
+web/node_modules/
