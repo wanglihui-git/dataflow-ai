@@ -5,10 +5,14 @@ import { authApi } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
-  const user = ref<User | null>(() => {
-    const stored = localStorage.getItem('user')
-    return stored ? JSON.parse(stored) : null
-  })
+  // const user = ref<User | null>(() => {
+  //   const stored = localStorage.getItem('user')
+  //   return stored ? JSON.parse(stored) : null
+  // })
+
+  const user = ref<User | null>(localStorage.getItem('user')
+      ? JSON.parse(localStorage.getItem('user')!)
+      : null)
 
   const isAuthenticated = computed(() => !!token.value)
 
