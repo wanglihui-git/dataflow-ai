@@ -1,6 +1,6 @@
 <template>
   <el-container class="layout-container">
-    <el-aside width="200px">
+    <el-aside width="220px">
       <div class="logo">
         <h3>DataFlow AI</h3>
       </div>
@@ -22,6 +22,18 @@
         <el-menu-item index="/data-sources">
           <el-icon><Database /></el-icon>
           <span>数据源</span>
+        </el-menu-item>
+        <el-menu-item index="/executions">
+          <el-icon><Monitor /></el-icon>
+          <span>作业监控</span>
+        </el-menu-item>
+        <el-menu-item index="/ai">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 助手</span>
+        </el-menu-item>
+        <el-menu-item index="/settings">
+          <el-icon><Setting /></el-icon>
+          <span>设置</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -48,6 +60,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { Monitor, MagicStick, Setting } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

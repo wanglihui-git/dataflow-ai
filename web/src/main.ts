@@ -8,6 +8,9 @@ import zhCn from "element-plus/es/locale/lang/zh-cn"
 import App from './App.vue'
 import router from './router'
 
+// 引入 Notion 风格全局样式
+import '@/styles/notion-theme.css'
+
 const app = createApp(App)
 
 const pinia = createPinia()

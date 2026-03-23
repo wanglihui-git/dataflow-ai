@@ -1,0 +1,411 @@
+/* Dataflow AI - Notion 简约风格主题 */
+
+/* ============ Google Fonts 引入 ============ */
+/* 在 index.html 中引入 Fonts */
+
+/* ============ CSS 变量系统 ============ */
+:root {
+  /* 颜色系统 */
+  --color-primary: #1971c2;
+  --color-primary-light: #e7f5ff;
+  --color-primary-dark: #1864ab;
+  --color-success: #2f9e44;
+  --color-success-light: #e6f7ed;
+  --color-warning: #f08c00;
+  --color-warning-light: #fff7e6;
+  --color-danger: #fa5252;
+  --color-danger-light: #ffeaea;
+  --color-info: #1971c2;
+  --color-info-light: #e6f0ff;
+
+  /* 灰度色阶 */
+  --color-gray-50: #f8f9fa;
+  --color-gray-100: #f1f3f5;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-400: #ced4da;
+  --color-gray-500: #adb5bd;
+  --color-gray-600: #868e96;
+  --color-gray-700: #495057;
+  --color-gray-800: #343a40;
+  --color-gray-900: #212529;
+
+  /* 背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f5;
+
+  /* 文字色 */
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-tertiary: #868e96;
+  --text-link: #1971c2;
+
+  /* 边框色 */
+  --border-color: #e9ecef;
+  --border-color-light: #f1f3f5;
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* 阴影 - Notion 风格 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* 字体 - Inter 作为主要字体 */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* 字体大小 */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-xxl: 24px;
+
+  /* 行高 */
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* 过渡 */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* ============ 全局样式 ============ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============ 字体设置 ============ */
+/* 数字使用等宽字体，便于对齐 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 等宽字体 */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ============ 基础组件样式覆盖 ============ */
+/* Element Plus 样式覆盖 - Notion 风格 */
+.el-button {
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.el-button--primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.el-button--primary:hover {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+/* 输入框 */
+.el-input__wrapper {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  transition: border-color var(--transition-base);
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--color-gray-400);
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+/* 选择框 */
+.el-select__wrapper {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+}
+
+/* 表格 */
+.el-table {
+  --el-table-border-color: var(--border-color);
+  --el-table-header-bg-color: var(--bg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.el-table--border .el-table__cell {
+  border-right: none;
+}
+
+/* 卡片 */
+.el-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.el-card__header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+/* 对话框 */
+.el-dialog {
+  border-radius: var(--radius-xl);
+}
+
+.el-dialog__header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.el-dialog__body {
+  padding: var(--spacing-lg);
+}
+
+/* 菜单 */
+.el-menu {
+  border-right: none;
+}
+
+/* ============ Notion 风格卡片 ============ */
+.notion-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  transition: all var(--transition-base);
+}
+
+.notion-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.notion-card--flat {
+  box-shadow: none;
+  border-color: var(--border-color);
+}
+
+.notion-card--flat:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+/* ============ 列表样式 ============ */
+.notion-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notion-list-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.notion-list-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+/* ============ JSON 编辑器样式 ============ */
+.json-editor {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  overflow: auto;
+}
+
+.json-editor__key {
+  color: var(--color-primary);
+}
+
+.json-editor__string {
+  color: var(--color-success);
+}
+
+.json-editor__number {
+  color: var(--color-danger);
+}
+
+.json-editor__boolean {
+  color: var(--color-warning);
+}
+
+.json-editor__null {
+  color: var(--text-tertiary);
+}
+
+.json-editor__bracket {
+  color: var(--text-secondary);
+}
+
+/* ============ 拖拽相关样式 ============ */
+.draggable {
+  cursor: move;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.draggable:hover {
+  background-color: var(--color-primary-light);
+}
+
+.dragging {
+  opacity: 0.5;
+}
+
+.drop-zone {
+  min-height: 40px;
+  border: 2px dashed var(--color-gray-300);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.drop-zone.drag-over {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+/* ============ 滚动条样式 ============ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-400);
+}
+
+/* ============ 工具类 ============ */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.text-link {
+  color: var(--text-link);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============ 动画 ============ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-base);
+}
+
+.slide-up {
+  animation: slideUp var(--transition-base);
+}

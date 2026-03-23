@@ -25,14 +25,44 @@ const routes = [
         component: () => import('@/pages/Pipeline/List.vue')
       },
       {
+        path: 'pipelines/create',
+        name: 'PipelineCreate',
+        component: () => import('@/pages/Pipeline/Edit.vue')
+      },
+      {
         path: 'pipelines/:id',
         name: 'PipelineDetail',
         component: () => import('@/pages/Pipeline/Detail.vue')
       },
       {
+        path: 'pipelines/:id/edit',
+        name: 'PipelineEdit',
+        component: () => import('@/pages/Pipeline/Edit.vue')
+      },
+      {
         path: 'data-sources',
         name: 'DataSourceList',
         component: () => import('@/pages/DataSource/List.vue')
+      },
+      {
+        path: 'executions',
+        name: 'ExecutionMonitor',
+        component: () => import('@/pages/Execution/Monitor.vue')
+      },
+      {
+        path: 'executions/:runId',
+        name: 'ExecutionDetail',
+        component: () => import('@/pages/Execution/Detail.vue')
+      },
+      {
+        path: 'ai',
+        name: 'AIAssistant',
+        component: () => import('@/pages/AI/Assistant.vue')
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/pages/Settings.vue')
       }
     ]
   }

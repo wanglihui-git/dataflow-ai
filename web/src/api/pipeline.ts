@@ -1,5 +1,10 @@
 import api from './index'
-import type { Pipeline, ExecutionRun } from '@/types'
+import type { Pipeline, ExecutionRun, PreviewResult } from '@/types'
+
+export interface RunOptions {
+  async?: boolean
+  params?: Record<string, unknown>
+}
 
 export const pipelineApi = {
   getList() {
@@ -17,12 +22,13 @@ export const pipelineApi = {
   delete(id: string) {
     return api.delete(`/v1/pipelines/${id}`)
   },
-  execute(id: string) {
-    return api.post(`/v1/pipelines/${id}/execute`)
+  run(id: string, options?: RunOptions) {
+    return api.post<ExecutionRun>(`/v1/pipelines/${id}/run`, options)
   },
-  getExecutionRuns(pipelineId: string) {
-    return api.get<ExecutionRun[]>(`/v1/execution/runs`, {
-      params: { pipelineId }
-    })
+  preview(id: string, transformConfig: unknown) {
+    return api.post<PreviewResult>(`/v1/pipelines/${id}/preview`, transformConfig)
+  },
+  getExecutionRuns(pipelineId: string, params?: Record<string, unknown>) {
+    return api.get<ExecutionRun[]>(`/v1/pipelines/${pipelineId}/runs`, { params })
   }
 }

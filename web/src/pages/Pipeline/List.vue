@@ -25,10 +25,13 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleDetail(row.id)">
               详情
+            </el-button>
+            <el-button type="warning" link size="small" @click="handleEdit(row.id)">
+              编辑
             </el-button>
             <el-button type="success" link size="small" @click="handleExecute(row.id)">
               执行
@@ -110,6 +113,10 @@ const handleDetail = (id: string) => {
   router.push(`/pipelines/${id}`)
 }
 
+const handleEdit = (id: string) => {
+  router.push(`/pipelines/${id}/edit`)
+}
+
 const handleExecute = async (id: string) => {
   try {
     await ElMessageBox.confirm('确定要执行此 Pipeline 吗？', '提示', {
@@ -117,7 +124,7 @@ const handleExecute = async (id: string) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await pipelineApi.execute(id)
+    await pipelineApi.run(id)
     ElMessage.success('Pipeline 已启动执行')
     loadPipelines()
   } catch (err: unknown) {

@@ -15,7 +15,7 @@
         <el-table-column prop="name" label="名称" min-width="200" />
         <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">
-            <el-tag>{{ row.type }}</el-tag>
+            <el-tag>{{ typeLabels[row.type] || row.type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdBy" label="创建者" width="150" />
@@ -29,10 +29,16 @@
             {{ formatDate(row.updatedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handlePreview(row)">
+              预览
+            </el-button>
             <el-button type="success" link size="small" @click="handleTestConnection(row.id)">
-              测试连接
+              测试
+            </el-button>
+            <el-button type="warning" link size="small" @click="handleEdit(row)">
+              编辑
             </el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">
               删除
@@ -43,72 +49,63 @@
     </el-card>
 
     <!-- 新建数据源对话框 -->
-    <el-dialog v-model="createDialogVisible" title="新建数据源" width="600px">
-      <el-form :model="createForm" label-width="100px">
-        <el-form-item label="名称">
-          <el-input v-model="createForm.name" placeholder="请输入数据源名称" />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="createForm.type" placeholder="请选择类型" style="width: 100%">
-            <el-option label="MySQL" value="MYSQL" />
-            <el-option label="PostgreSQL" value="POSTGRES" />
-            <el-option label="API" value="API" />
-            <el-option label="Kafka" value="KAFKA" />
-            <el-option label="CSV" value="CSV" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="连接配置">
-          <el-input
-            v-model="connectionConfigStr"
-            type="textarea"
-            :rows="4"
-            placeholder='请输入 JSON 配置，例如: {"host": "localhost", "port": 3306}'
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="createLoading" @click="submitCreate">
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
+    <CreateDialog
+      v-model="createDialogVisible"
+      @success="handleCreateSuccess"
+    />
+
+    <!-- 编辑数据源对话框 -->
+    <EditDialog
+      v-model="editDialogVisible"
+      :data-source="currentDataSource"
+      @success="handleEditSuccess"
+    />
+
+    <!-- 预览对话框 -->
+    <PreviewDialog
+      v-model="previewDialogVisible"
+      :data-source-id="currentDataSourceId"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import type { DataSource } from '@/types'
 import { dataSourceApi } from '@/api/dataSource'
+import CreateDialog from '@/components/DataSource/CreateDialog.vue'
+import EditDialog from '@/components/DataSource/EditDialog.vue'
+import PreviewDialog from '@/components/DataSource/PreviewDialog.vue'
+
+const typeLabels: Record<string, string> = {
+  MYSQL: 'MySQL',
+  POSTGRES: 'PostgreSQL',
+  API: 'API',
+  KAFKA: 'Kafka',
+  CSV: 'CSV'
+}
 
 const loading = ref(false)
-const createLoading = ref(false)
 const dataSources = ref<DataSource[]>([])
+
+// 新建对话框
 const createDialogVisible = ref(false)
 
-const createForm = reactive({
-  name: '',
-  type: '' as DataSource['type'] | '',
-  connectionConfig: {} as Record<string, unknown>
-})
+// 编辑对话框
+const editDialogVisible = ref(false)
+const currentDataSource = ref<DataSource | null>(null)
 
-const connectionConfigStr = computed({
-  get: () => JSON.stringify(createForm.connectionConfig, null, 2),
-  set: (val: string) => {
-    try {
-      createForm.connectionConfig = val ? JSON.parse(val) : {}
-    } catch {
-      // 无效的 JSON，忽略
-    }
-  }
-})
+// 预览对话框
+const previewDialogVisible = ref(false)
+const currentDataSourceId = ref('')
 
 const loadDataSources = async () => {
   loading.value = true
   try {
     const res = await dataSourceApi.getList()
-    dataSources.value = res.data
+    dataSources.value = res.data.data || []
   } catch (err) {
     ElMessage.error('加载数据源列表失败')
   } finally {
@@ -116,8 +113,31 @@ const loadDataSources = async () => {
   }
 }
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString('zh-CN')
+}
+
+const handleCreate = () => {
+  createDialogVisible.value = true
+}
+
+const handleCreateSuccess = () => {
+  loadDataSources()
+}
+
+const handleEdit = (row: DataSource) => {
+  currentDataSource.value = row
+  editDialogVisible.value = true
+}
+
+const handleEditSuccess = () => {
+  loadDataSources()
+}
+
+const handlePreview = (row: DataSource) => {
+  currentDataSourceId.value = row.id
+  previewDialogVisible.value = true
 }
 
 const handleTestConnection = async (id: string) => {
@@ -143,39 +163,6 @@ const handleDelete = async (row: DataSource) => {
     if (err !== 'cancel') {
       ElMessage.error('删除失败')
     }
-  }
-}
-
-const handleCreate = () => {
-  createForm.name = ''
-  createForm.type = ''
-  createForm.connectionConfig = {}
-  createDialogVisible.value = true
-}
-
-const submitCreate = async () => {
-  if (!createForm.name) {
-    ElMessage.warning('请输入数据源名称')
-    return
-  }
-  if (!createForm.type) {
-    ElMessage.warning('请选择数据源类型')
-    return
-  }
-  createLoading.value = true
-  try {
-    await dataSourceApi.create({
-      name: createForm.name,
-      type: createForm.type as DataSource['type'],
-      connectionConfig: createForm.connectionConfig
-    })
-    ElMessage.success('创建成功')
-    createDialogVisible.value = false
-    loadDataSources()
-  } catch (err) {
-    ElMessage.error('创建失败')
-  } finally {
-    createLoading.value = false
   }
 }
 

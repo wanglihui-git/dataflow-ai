@@ -1,5 +1,5 @@
 import api from './index'
-import type { DataSource } from '@/types'
+import type { DataSource, ConnectionTestResult, PreviewData, PreviewConfig } from '@/types'
 
 export const dataSourceApi = {
   getList() {
@@ -18,6 +18,9 @@ export const dataSourceApi = {
     return api.delete(`/v1/data-sources/${id}`)
   },
   testConnection(id: string) {
-    return api.post(`/v1/data-sources/${id}/test`)
+    return api.post<ConnectionTestResult>(`/v1/data-sources/${id}/test`)
+  },
+  preview(id: string, config?: PreviewConfig) {
+    return api.post<PreviewData>(`/v1/data-sources/${id}/preview`, config)
   }
 }
