@@ -92,6 +92,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Pipeline, ExecutionRun } from '@/types'
 import { pipelineApi } from '@/api/pipeline'
+import {ArrowLeft, VideoPlay} from "@element-plus/icons-vue";
 
 const route = useRoute()
 const router = useRouter()

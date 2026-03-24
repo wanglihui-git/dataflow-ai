@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(credentials: LoginRequest) {
     const response = await authApi.login(credentials)
     // response.data 是 ApiResponse，嵌套的 data 才是 LoginResponse
-    const { token: newToken, ...userData } = response.data.data
+    const { token: newToken, ...userData } = response.data
 
     token.value = newToken
     user.value = userData as User

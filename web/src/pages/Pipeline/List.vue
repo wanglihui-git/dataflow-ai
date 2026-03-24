@@ -67,6 +67,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Pipeline } from '@/types'
 import { pipelineApi } from '@/api/pipeline'
+import {Plus} from "@element-plus/icons-vue";
 
 const router = useRouter()
 

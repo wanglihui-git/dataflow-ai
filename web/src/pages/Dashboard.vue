@@ -60,6 +60,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { pipelineApi } from '@/api/pipeline'
 import { dataSourceApi } from '@/api/dataSource'
+import {Connection, Plus, VideoPlay} from "@element-plus/icons-vue";
 
 const router = useRouter()
 

@@ -81,6 +81,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { DataSource } from '@/types'
 import { dataSourceApi } from '@/api/dataSource'
+import {Plus} from "@element-plus/icons-vue";
 
 const loading = ref(false)
 const createLoading = ref(false)
