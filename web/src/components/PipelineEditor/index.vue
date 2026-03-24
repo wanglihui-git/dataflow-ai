@@ -53,7 +53,7 @@
             v-else
             type="data"
             title="请选择数据源"
-            description="点击上方"选择数据源"按钮来配置源数据"
+            description="点击上方选择数据源按钮来配置源数据"
           >
             <template #actions>
               <el-button type="primary" @click="handleSelectDataSource">

@@ -64,20 +64,22 @@ const rules: FormRules = {
 const handleLogin = async () => {
   if (!formRef.value) return
 
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        await authStore.login(loginForm)
-        ElMessage.success('登录成功')
-        router.push('/')
-      } catch (err) {
-        ElMessage.error('登录失败，请检查用户名和密码')
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 验证失败，阻止提交
+  }
+
+  loading.value = true
+  try {
+    await authStore.login(loginForm)
+    ElMessage.success('登录成功')
+    router.push('/')
+  } catch (err) {
+    ElMessage.error('登录失败，请检查用户名和密码')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

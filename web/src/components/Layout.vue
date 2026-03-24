@@ -20,7 +20,7 @@
           <span>Pipeline</span>
         </el-menu-item>
         <el-menu-item index="/data-sources">
-          <el-icon><Database /></el-icon>
+          <el-icon><DataAnalysis /></el-icon>
           <span>数据源</span>
         </el-menu-item>
         <el-menu-item index="/executions">
@@ -60,7 +60,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { Monitor, MagicStick, Setting } from '@element-plus/icons-vue'
+import { Monitor, MagicStick, Setting, DataAnalysis,Odometer,Connection,SwitchButton } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -17,7 +17,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.getList()
-      dataSources.value = response.data.data || []
+      dataSources.value = response.data || []
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取数据源列表失败'
     } finally {
@@ -30,7 +30,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.getById(id)
-      currentDataSource.value = response.data.data || null
+      currentDataSource.value = response.data || null
       return currentDataSource.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取数据源详情失败'
@@ -45,7 +45,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.create(data)
-      const created = response.data.data
+      const created = response.data
       if (created) {
         dataSources.value.push(created)
       }
@@ -63,7 +63,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.update(id, data)
-      const updated = response.data.data
+      const updated = response.data
       if (updated) {
         const index = dataSources.value.findIndex(ds => ds.id === id)
         if (index !== -1) {
@@ -105,7 +105,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.testConnection(id)
-      return response.data.data
+      return response.data
     } catch (e) {
       error.value = e instanceof Error ? e.message : '测试连接失败'
       return null
@@ -119,7 +119,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const response = await dataSourceApi.preview(id, config)
-      return response.data.data
+      return response.data
     } catch (e) {
       error.value = e instanceof Error ? e.message : '预览数据失败'
       return null

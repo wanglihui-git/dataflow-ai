@@ -57,7 +57,7 @@ public class PipelineServiceImpl implements PipelineService {
                 .sink(request.getSink())
                 .schedule(request.getSchedule())
                 .ownerId(ownerId)
-                .permissionLevel(Pipeline.PermissionLevel.PRIVATE)
+                .permissionLevel(Pipeline.PermissionLevel.PUBLIC)
                 .status("active")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

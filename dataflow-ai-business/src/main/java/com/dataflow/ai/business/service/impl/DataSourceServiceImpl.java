@@ -4,6 +4,8 @@ import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.domain.request.CreateDataSourceRequest;
+import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
@@ -47,13 +49,13 @@ public class DataSourceServiceImpl implements DataSourceService {
     }
 
     @Override
-    public DataSource createDataSource(String name, DataSourceType type, Map<String, Object> connectionConfig, String createdBy) {
+    public DataSource createDataSource(CreateDataSourceRequest request, String createdBy) {
         // 加密敏感配置
-        Map<String, Object> encryptedConfig = encryptionService.encrypt(connectionConfig);
+        Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
         DataSource dataSource = DataSource.builder()
                 .id(UUID.randomUUID().toString())
-                .name(name)
-                .type(type)
+                .name(request.getName())
+                .type(request.getType())
                 .connectionConfig(encryptedConfig)
                 .createdBy(createdBy)
                 .createdAt(LocalDateTime.now())
@@ -63,7 +65,26 @@ public class DataSourceServiceImpl implements DataSourceService {
     }
 
     @Override
-    public DataSource updateDataSource(DataSource dataSource) {
+    public DataSource updateDataSource(String id, UpdateDataSourceRequest request) {
+        Optional<DataSource> existingOpt = dataSourceRepository.findById(id);
+        if (existingOpt.isEmpty()) {
+            throw new RuntimeException("数据源不存在");
+        }
+        DataSource dataSource = existingOpt.get();
+
+        // 更新字段
+        if (request.getName() != null) {
+            dataSource.setName(request.getName());
+        }
+        if (request.getType() != null) {
+            dataSource.setType(request.getType());
+        }
+        if (request.getConnectionConfig() != null) {
+            // 加密敏感配置
+            Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
+            dataSource.setConnectionConfig(encryptedConfig);
+        }
+
         dataSource.setUpdatedAt(LocalDateTime.now());
         return dataSourceRepository.save(dataSource);
     }

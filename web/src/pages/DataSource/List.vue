@@ -105,7 +105,7 @@ const loadDataSources = async () => {
   loading.value = true
   try {
     const res = await dataSourceApi.getList()
-    dataSources.value = res.data.data || []
+    dataSources.value = res.data || []
   } catch (err) {
     ElMessage.error('加载数据源列表失败')
   } finally {

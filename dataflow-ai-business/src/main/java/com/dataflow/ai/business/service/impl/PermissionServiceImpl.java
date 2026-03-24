@@ -27,9 +27,9 @@ public class PermissionServiceImpl implements PermissionService {
             return true;
         }
         // 共享Pipeline检查用户是否在允许列表中
-        if (pipeline.getPermissionLevel() == Pipeline.PermissionLevel.SHARED) {
-            return checkSharedAccess(pipeline, user);
-        }
+//        if (pipeline.getPermissionLevel() == Pipeline.PermissionLevel.SHARED) {
+//            return checkSharedAccess(pipeline, user);
+//        }
         return false;
     }
 
@@ -96,6 +96,7 @@ public class PermissionServiceImpl implements PermissionService {
     /**
      * 检查用户是否有共享Pipeline的访问权限
      */
+    /*
     private boolean checkSharedAccess(Pipeline pipeline, User user) {
         // 检查角色是否在允许列表中
         if (pipeline.getAllowedRoles() != null && !pipeline.getAllowedRoles().isEmpty()) {
@@ -117,4 +118,6 @@ public class PermissionServiceImpl implements PermissionService {
         }
         return false;
     }
+
+     */
 }

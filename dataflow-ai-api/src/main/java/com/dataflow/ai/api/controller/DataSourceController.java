@@ -2,9 +2,10 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.domain.request.CreateDataSourceRequest;
+import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.entity.DataSource;
-import com.dataflow.ai.domain.enums.DataSourceType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +29,13 @@ public class DataSourceController {
 
     @PostMapping
     @Operation(summary = "创建数据源")
-    public ApiResponse<DataSource> create(
-            @RequestParam String name,
-            @RequestParam DataSourceType type,
-            @RequestBody Map<String, Object> connectionConfig) {
-        log.info("Create datasource: {}, type: {}", name, type);
+    public ApiResponse<DataSource> create(@RequestBody CreateDataSourceRequest request) {
+        log.info("Create datasource: {}, type: {}", request.getName(), request.getType());
         String userId = SecurityUtils.getCurrentUserId();
-        DataSource dataSource = dataSourceService.createDataSource(name, type, connectionConfig, userId);
+        DataSource dataSource = dataSourceService.createDataSource(
+                request,
+                userId
+        );
         return ApiResponse.ofSuccess(dataSource);
     }
 
@@ -59,6 +60,16 @@ public class DataSourceController {
     public ApiResponse<Void> delete(@PathVariable String id) {
         dataSourceService.deleteDataSource(id);
         return ApiResponse.ofSuccess();
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新数据源")
+    public ApiResponse<DataSource> update(
+            @PathVariable String id,
+            @RequestBody UpdateDataSourceRequest request) {
+        log.info("Update datasource: {}", id);
+        DataSource dataSource = dataSourceService.updateDataSource(id, request);
+        return ApiResponse.ofSuccess(dataSource);
     }
 
     @PostMapping("/{id}/test")

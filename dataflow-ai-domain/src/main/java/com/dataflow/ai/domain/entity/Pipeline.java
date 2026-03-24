@@ -14,6 +14,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,6 +51,7 @@ public class Pipeline {
      * 源配置
      */
     @Convert(converter = SourceConfigConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private SourceConfig source;
 
@@ -56,6 +59,7 @@ public class Pipeline {
      * 转换节点列表
      */
     @Convert(converter = TransformListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<Transform> transforms;
 
@@ -63,6 +67,7 @@ public class Pipeline {
      * 目标配置
      */
     @Convert(converter = SinkConfigConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private SinkConfig sink;
 
@@ -70,6 +75,7 @@ public class Pipeline {
      * 调度配置
      */
     @Convert(converter = ScheduleConfigConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private ScheduleConfig schedule;
 
@@ -87,23 +93,23 @@ public class Pipeline {
     /**
      * 允许的角色
      */
-    @Convert(converter = StringListConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private List<String> allowedRoles;
+//    @Convert(converter = StringListConverter.class)
+//    @Column(columnDefinition = "jsonb")
+//    private List<String> allowedRoles;
 
     /**
      * 允许的用户
      */
-    @Convert(converter = StringListConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private List<String> allowedUsers;
+//    @Convert(converter = StringListConverter.class)
+//    @Column(columnDefinition = "jsonb")
+//    private List<String> allowedUsers;
 
     /**
      * 允许的部门
      */
-    @Convert(converter = StringListConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private List<String> allowedDepartments;
+//    @Convert(converter = StringListConverter.class)
+//    @Column(columnDefinition = "jsonb")
+//    private List<String> allowedDepartments;
 
     /**
      * 状态

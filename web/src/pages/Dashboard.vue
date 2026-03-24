@@ -15,7 +15,7 @@
         <el-card shadow="hover">
           <el-statistic title="数据源总数" :value="dataSourceCount">
             <template #prefix>
-              <el-icon class="statistic-icon"><Database /></el-icon>
+              <el-icon class="statistic-icon"><DataAnalysis /></el-icon>
             </template>
           </el-statistic>
         </el-card>

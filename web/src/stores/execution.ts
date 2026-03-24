@@ -44,7 +44,7 @@ export const useExecutionStore = defineStore('execution', () => {
     error.value = null
     try {
       const response = await executionApi.getDetail(runId)
-      currentExecution.value = response.data.data || null
+      currentExecution.value = response.data || null
       return currentExecution.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取执行详情失败'
@@ -84,7 +84,7 @@ export const useExecutionStore = defineStore('execution', () => {
     error.value = null
     try {
       const response = await executionApi.getStats(pipelineId, timeframe)
-      executionStats.value = response.data.data || null
+      executionStats.value = response.data || null
       return executionStats.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取执行统计失败'
@@ -100,7 +100,7 @@ export const useExecutionStore = defineStore('execution', () => {
     error.value = null
     try {
       const response = await executionApi.getLogs(runId)
-      executionLogs.value = response.data.data || []
+      executionLogs.value = response.data || []
       return executionLogs.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取执行日志失败'
@@ -116,7 +116,7 @@ export const useExecutionStore = defineStore('execution', () => {
     error.value = null
     try {
       const response = await executionApi.getMetrics(runId)
-      executionMetrics.value = response.data.data || null
+      executionMetrics.value = response.data || null
       return executionMetrics.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取执行指标失败'

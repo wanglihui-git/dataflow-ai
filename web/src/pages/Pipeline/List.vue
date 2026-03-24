@@ -164,17 +164,22 @@ const submitCreate = async () => {
   }
   createLoading.value = true
   try {
-    await pipelineApi.create({
+    const res = await pipelineApi.create({
       name: createForm.name,
       description: createForm.description,
-      source: { type: 'manual' },
+      source: { type: 'API' },
       transforms: [],
-      sink: { type: 'database' },
+      sink: { writeMode: 'APPEND' },
+      schedule: { enabled: false },
       permissionLevel: 'PRIVATE'
     })
     ElMessage.success('创建成功')
     createDialogVisible.value = false
     loadPipelines()
+    // 跳转到编辑页面
+    if (res.data?.id) {
+      router.push(`/pipelines/${res.data.id}/edit`)
+    }
   } catch (err) {
     ElMessage.error('创建失败')
   } finally {

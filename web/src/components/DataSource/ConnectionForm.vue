@@ -137,7 +137,7 @@ const emit = defineEmits<{
 
 const localConfig = reactive<Record<string, unknown>>({
   host: 'localhost',
-  port: type === 'MYSQL' ? 3306 : 5432,
+  port: props.type === 'MYSQL' ? 3306 : 5432,
   database: '',
   username: '',
   password: '',

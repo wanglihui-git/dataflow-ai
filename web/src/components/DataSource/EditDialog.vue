@@ -122,24 +122,26 @@ watch(
 const handleSubmit = async () => {
   if (!formRef.value || !props.dataSource) return
 
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 验证失败，阻止提交
+  }
 
-    loading.value = true
-    try {
-      const response = await dataSourceApi.update(props.dataSource.id, formData as Partial<DataSource>)
-      const dataSource = response.data.data
-      if (dataSource) {
-        ElMessage.success('保存成功')
-        emit('success', dataSource)
-        handleClose()
-      }
-    } catch (error) {
-      ElMessage.error('保存失败')
-    } finally {
-      loading.value = false
+  loading.value = true
+  try {
+    const response = await dataSourceApi.update(props.dataSource.id, formData as Partial<DataSource>)
+    const dataSource = response.data
+    if (dataSource) {
+      ElMessage.success('保存成功')
+      emit('success', dataSource)
+      handleClose()
     }
-  })
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleClose = () => {

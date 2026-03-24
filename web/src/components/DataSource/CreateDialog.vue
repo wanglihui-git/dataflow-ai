@@ -112,24 +112,26 @@ const rules: FormRules = {
 const handleSubmit = async () => {
   if (!formRef.value) return
 
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 验证失败，阻止提交
+  }
 
-    loading.value = true
-    try {
-      const response = await dataSourceApi.create(formData as Partial<DataSource>)
-      const dataSource = response.data.data
-      if (dataSource) {
-        ElMessage.success('创建成功')
-        emit('success', dataSource)
-        handleClose()
-      }
-    } catch (error) {
-      ElMessage.error('创建失败')
-    } finally {
-      loading.value = false
+  loading.value = true
+  try {
+    const response = await dataSourceApi.create(formData as Partial<DataSource>)
+    const dataSource = response.data
+    if (dataSource) {
+      ElMessage.success('创建成功')
+      emit('success', dataSource)
+      handleClose()
     }
-  })
+  } catch (error) {
+    ElMessage.error('创建失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleClose = () => {

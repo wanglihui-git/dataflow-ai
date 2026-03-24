@@ -28,7 +28,6 @@ public interface PipelineJpaRepository extends JpaRepository<Pipeline, String> {
             SELECT * FROM pipelines
             WHERE owner_id = ?1
                OR permission_level = 'PUBLIC'
-               OR (allowed_users IS NOT NULL AND allowed_users @> to_jsonb(?1))
             """, nativeQuery = true)
     List<Pipeline> findAccessibleByUserId(String userId);
 }

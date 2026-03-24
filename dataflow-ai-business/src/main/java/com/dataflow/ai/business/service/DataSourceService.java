@@ -2,6 +2,8 @@ package com.dataflow.ai.business.service;
 
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.domain.request.CreateDataSourceRequest;
+import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -30,12 +32,12 @@ public interface DataSourceService {
     /**
      * 创建数据源
      */
-    DataSource createDataSource(String name, DataSourceType type, Map<String, Object> connectionConfig, String createdBy);
+    DataSource createDataSource(CreateDataSourceRequest request, String createdBy);
 
     /**
      * 更新数据源
      */
-    DataSource updateDataSource(DataSource dataSource);
+    DataSource updateDataSource(String id, UpdateDataSourceRequest request);
 
     /**
      * 删除数据源

@@ -113,7 +113,7 @@ const loadDataSources = async () => {
   loading.value = true
   try {
     const res = await dataSourceApi.getList()
-    dataSources.value = res.data.data || []
+    dataSources.value = res.data || []
   } catch (error) {
     ElMessage.error('加载数据源失败')
   } finally {
@@ -132,7 +132,7 @@ const handleSelect = async (ds: DataSource) => {
   // 加载预览数据
   try {
     const result = await dataSourceApi.preview(ds.id, { limit: 1 })
-    const data = result.data.data
+    const data = result.data
     if (data?.rows?.length) {
       emit('select', ds, data.rows[0])
       visible.value = false
@@ -149,7 +149,7 @@ const handleSelect = async (ds: DataSource) => {
 const handlePreview = async (ds: DataSource) => {
   try {
     const result = await dataSourceApi.preview(ds.id, { limit: 10 })
-    previewData.value = result.data.data?.rows?.[0] || null
+    previewData.value = result.data?.rows?.[0] || null
     previewVisible.value = true
   } catch (error) {
     ElMessage.error('预览失败')

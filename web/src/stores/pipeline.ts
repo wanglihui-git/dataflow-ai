@@ -17,7 +17,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     error.value = null
     try {
       const response = await pipelineApi.getList()
-      pipelines.value = response.data.data || []
+      pipelines.value = response.data || []
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取 Pipeline 列表失败'
     } finally {
@@ -30,7 +30,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     error.value = null
     try {
       const response = await pipelineApi.getById(id)
-      currentPipeline.value = response.data.data || null
+      currentPipeline.value = response.data || null
       return currentPipeline.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取 Pipeline 详情失败'
@@ -45,7 +45,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     error.value = null
     try {
       const response = await pipelineApi.create(data)
-      const created = response.data.data
+      const created = response.data
       if (created) {
         pipelines.value.push(created)
       }
@@ -63,7 +63,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     error.value = null
     try {
       const response = await pipelineApi.update(id, data)
-      const updated = response.data.data
+      const updated = response.data
       if (updated) {
         const index = pipelines.value.findIndex(p => p.id === id)
         if (index !== -1) {
@@ -105,7 +105,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     error.value = null
     try {
       const response = await pipelineApi.run(id, options)
-      return response.data.data
+      return response.data
     } catch (e) {
       error.value = e instanceof Error ? e.message : '执行 Pipeline 失败'
       return null

@@ -37,7 +37,7 @@ export const useAIStore = defineStore('ai', () => {
     error.value = null
     try {
       const response = await aiApi.generateTransforms(prompt, context)
-      const transforms = response.data.data || []
+      const transforms = response.data || []
       generatedTransforms.value = transforms
 
       // 添加到历史记录
@@ -63,7 +63,7 @@ export const useAIStore = defineStore('ai', () => {
     error.value = null
     try {
       const response = await aiApi.searchSimilar(query, limit)
-      similarInstructions.value = response.data.data || []
+      similarInstructions.value = response.data || []
       return similarInstructions.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : '搜索相似指令失败'
@@ -94,7 +94,7 @@ export const useAIStore = defineStore('ai', () => {
     error.value = null
     try {
       const response = await aiApi.diagnose(runId)
-      diagnosisResult.value = response.data.data || null
+      diagnosisResult.value = response.data || null
       return diagnosisResult.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'AI 诊断失败'
