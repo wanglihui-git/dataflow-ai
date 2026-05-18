@@ -31,11 +31,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UserController.class)
-@Import(TestSecurityConfig.class)
+import jakarta.servlet.ServletException;
+import org.junit.jupiter.api.Assertions;
+
+@WebMvcTest
+@Import({UserController.class, TestSecurityConfig.class})
 class UserControllerTest {
 
     @Autowired
@@ -98,13 +103,15 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /v1/users/{id} - 不存在")
+    @DisplayName("GET /v1/users/{id} - 不存在时抛出 RuntimeException（GlobalExceptionHandler 未实现）")
     @WithMockUser
-    void get_missingUser_returnsServerError() throws Exception {
+    void get_missingUser_throwsRuntimeException() {
         when(userService.findById("missing")).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/v1/users/missing").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().is5xxServerError());
+        ServletException ex = Assertions.assertThrows(ServletException.class, () ->
+                mockMvc.perform(get("/v1/users/missing").accept(MediaType.APPLICATION_JSON)));
+        assertInstanceOf(RuntimeException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("用户不存在"));
     }
 
     @Test

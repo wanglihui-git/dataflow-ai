@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +37,7 @@ class DataSourceServiceImplTest {
     @Test
     @DisplayName("createDataSource - 加密并保存")
     void createDataSource_encryptsAndSaves() {
-        when(encryptionService.encrypt(any())).thenReturn(Map.of("url", "enc"));
+        when(encryptionService.encrypt(anyMap())).thenReturn(Map.of("url", "enc"));
         when(dataSourceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CreateDataSourceRequest request = CreateDataSourceRequest.builder()
@@ -48,7 +49,7 @@ class DataSourceServiceImplTest {
         DataSource saved = dataSourceService.createDataSource(request, "user-001");
 
         assertTrue(saved.getId() != null && !saved.getId().isBlank());
-        verify(encryptionService).encrypt(any());
+        verify(encryptionService).encrypt(anyMap());
         verify(dataSourceRepository).save(any());
     }
 
@@ -60,7 +61,7 @@ class DataSourceServiceImplTest {
                 .connectionConfig(Map.of("k", "v"))
                 .build();
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
-        when(encryptionService.decrypt(any())).thenReturn(Map.of("k", "v"));
+        when(encryptionService.decrypt(anyMap())).thenReturn(Map.of("k", "v"));
 
         assertTrue(dataSourceService.testConnection("ds-1"));
     }

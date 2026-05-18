@@ -34,8 +34,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(DataSourceController.class)
-@Import(TestSecurityConfig.class)
+@WebMvcTest
+@Import({DataSourceController.class, TestSecurityConfig.class})
 @WithMockUserId("user-001")
 class DataSourceControllerTest {
 

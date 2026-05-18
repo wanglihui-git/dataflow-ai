@@ -7,12 +7,14 @@ import com.dataflow.ai.domain.request.LoginRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.infrastructure.security.JwtProvider;
 import com.dataflow.ai.infrastructure.security.PasswordEncoder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -38,6 +40,12 @@ class UserServiceImplTest {
 
     @InjectMocks
     private UserServiceImpl userService;
+
+    @BeforeEach
+    void injectFieldDependencies() {
+        // UserServiceImpl 使用 @Resource 注入 userRepository，需手动绑定 Mock
+        ReflectionTestUtils.setField(userService, "userRepository", userRepository);
+    }
 
     @Test
     @DisplayName("login - 成功返回 token")

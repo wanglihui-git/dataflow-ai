@@ -32,8 +32,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AIController.class)
-@Import(TestSecurityConfig.class)
+@WebMvcTest
+@Import({AIController.class, TestSecurityConfig.class})
 @WithMockUserId("user-001")
 class AIControllerTest {
 

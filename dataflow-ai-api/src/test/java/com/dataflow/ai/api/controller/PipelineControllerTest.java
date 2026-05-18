@@ -34,8 +34,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(PipelineController.class)
-@Import(TestSecurityConfig.class)
+@WebMvcTest
+@Import({PipelineController.class, TestSecurityConfig.class})
 @WithMockUserId("user-001")
 class PipelineControllerTest {
 

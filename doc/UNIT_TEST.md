@@ -30,19 +30,32 @@
 
 ### 1.2 运行命令
 
+> **重要**：多模块项目不能只 `-pl` 子模块，必须加 **`-am`**（also-make）从根目录构建依赖模块；  
+> 否则会报 `Could not find artifact com.dataflow.ai:dataflow-ai-*:jar:1.0-SNAPSHOT`。  
+> 请在仓库根目录 `dataflow-ai/` 执行（不要在子模块目录单独 `mvn test`）。
+
 ```bash
-# API + Business 单测（推荐）
+# 在仓库根目录执行 — Business 单测（推荐）
+mvn test -pl dataflow-ai-business -am
+
+# API + Business
 mvn test -pl dataflow-ai-api,dataflow-ai-business -am
 
+# 若已全量 install 过，可只测 business（依赖已在本地 .m2）
+mvn install -DskipTests
+mvn test -pl dataflow-ai-business
+
 # 仅 Controller
-mvn test -pl dataflow-ai-api -Dtest="*ControllerTest"
+mvn test -pl dataflow-ai-api -am -Dtest="*ControllerTest"
 
 # 仅 Service / Repository
-mvn test -pl dataflow-ai-business -Dtest="*ServiceImplTest,*RepositoryImplTest"
+mvn test -pl dataflow-ai-business -am -Dtest="*ServiceImplTest,*RepositoryImplTest"
 
 # 全量
 mvn test
 ```
+
+**环境**：需 **JDK 17**（`java -version` 与 `mvn -version` 中的 Java 均为 17）。若 Maven 仍指向 JDK 8，请设置 `JAVA_HOME` 后重开终端。
 
 ### 1.3 测试技术栈
 
