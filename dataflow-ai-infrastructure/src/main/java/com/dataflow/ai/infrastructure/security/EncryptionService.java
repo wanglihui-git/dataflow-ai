@@ -2,60 +2,71 @@ package com.dataflow.ai.infrastructure.security;
 
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.symmetric.AES;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 加密服务
+ * 数据源连接配置 AES 加密服务（密钥来自 app.encryption.key，须 32 字节）
  */
 @Component
 public class EncryptionService {
 
-    @Value("${encryption.secret:defaultEncryptionKey16bytes}")
-    private String secret;
+    public static final int REQUIRED_KEY_BYTES = 32;
 
-    private AES getAES() {
-        // 确保密钥长度为16位
-        String key = secret.length() < 16 ? String.format("%-16s", secret) : secret.substring(0, 16);
-        return SecureUtil.aes(key.getBytes());
+    @Value("${app.encryption.key:}")
+    private String encryptionKey;
+
+    private byte[] aesKeyBytes;
+
+    @PostConstruct
+    void validateKey() {
+        aesKeyBytes = resolveKeyBytes(encryptionKey);
     }
 
-    /**
-     * 加密字符串
-     */
+    static byte[] resolveKeyBytes(String key) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException(
+                    "app.encryption.key (ENCRYPTION_KEY) must be set and exactly " + REQUIRED_KEY_BYTES + " bytes");
+        }
+        byte[] raw = key.getBytes(StandardCharsets.UTF_8);
+        if (raw.length != REQUIRED_KEY_BYTES) {
+            throw new IllegalStateException(
+                    "app.encryption.key must be exactly " + REQUIRED_KEY_BYTES + " bytes, got " + raw.length);
+        }
+        return raw;
+    }
+
+    private AES getAES() {
+        return SecureUtil.aes(aesKeyBytes);
+    }
+
     public String encrypt(String plaintext) {
         if (plaintext == null) {
             return null;
         }
-        AES aes = getAES();
-        byte[] encrypted = aes.encrypt(plaintext);
+        byte[] encrypted = getAES().encrypt(plaintext);
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
-    /**
-     * 解密字符串
-     */
     public String decrypt(String ciphertext) {
         if (ciphertext == null) {
             return null;
         }
         try {
-            AES aes = getAES();
             byte[] decoded = Base64.getDecoder().decode(ciphertext);
-            byte[] decrypted = aes.decrypt(decoded);
-            return new String(decrypted);
+            byte[] decrypted = getAES().decrypt(decoded);
+            return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException("解密失败", e);
         }
     }
 
-    /**
-     * 加密Map配置
-     */
     public Map<String, Object> encrypt(Map<String, Object> config) {
         if (config == null) {
             return null;
@@ -71,9 +82,6 @@ public class EncryptionService {
         return encrypted;
     }
 
-    /**
-     * 解密Map配置
-     */
     public Map<String, Object> decrypt(Map<String, Object> config) {
         if (config == null) {
             return null;
@@ -84,7 +92,6 @@ public class EncryptionService {
                 try {
                     decrypted.put(entry.getKey(), decrypt((String) entry.getValue()));
                 } catch (Exception e) {
-                    // 解密失败，保持原值
                     decrypted.put(entry.getKey(), entry.getValue());
                 }
             } else {

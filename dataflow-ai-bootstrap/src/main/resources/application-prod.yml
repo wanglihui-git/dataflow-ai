@@ -56,6 +56,11 @@ app:
     key: ${ENCRYPTION_KEY}
 
   llm:
+    provider: ${LLM_PROVIDER:qianwen}
+    qianwen:
+      api-key: ${QIANWEN_API_KEY:${DASHSCOPE_API_KEY:}}
+      base-url: ${QIANWEN_BASE_URL:https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation}
+      model: ${QIANWEN_MODEL:qwen-plus}
     openai:
       api-key: ${OPENAI_API_KEY}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
@@ -66,12 +71,22 @@ app:
       model: ${ZHIPU_MODEL:glm-4}
 
   embedding:
+    provider: ${EMBEDDING_PROVIDER:qianwen}
+    qianwen:
+      api-key: ${QIANWEN_API_KEY:${DASHSCOPE_API_KEY:}}
+      base-url: ${QIANWEN_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}
+      model: ${QIANWEN_EMBEDDING_MODEL:text-embedding-v3}
+      dimensions: ${QIANWEN_EMBEDDING_DIMENSIONS:1024}
     openai:
       api-key: ${OPENAI_API_KEY}
+      base-url: ${OPENAI_EMBEDDING_BASE_URL:https://api.openai.com/v1}
       model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+      dimensions: ${OPENAI_EMBEDDING_DIMENSIONS:1536}
     zhipu:
       api-key: ${ZHIPU_API_KEY}
+      base-url: ${ZHIPU_EMBEDDING_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
       model: ${ZHIPU_EMBEDDING_MODEL:embedding-2}
+      dimensions: ${ZHIPU_EMBEDDING_DIMENSIONS:1024}
 
   permission:
     enabled: ${PERMISSION_ENABLED:true}

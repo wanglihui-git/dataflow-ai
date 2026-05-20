@@ -137,11 +137,11 @@ business → domain
 
 ### 5.4 AI 辅助
 
-1. **generate-transforms**：调用 LLM →（计划）解析为节点列表 → 生成 embedding → 写入 `ai_helpers`
+1. **generate-transforms**：调用 LLM（`app.llm.provider`，默认 `qianwen`）→ `TransformResponseParser` 解析 `nodes[]` → 生成 embedding → 写入 `ai_helpers`
 2. **search-similar**：对指令 embedding，在 `ai_helpers` 上做向量近邻检索
 3. **feedback**：更新 `userFeedback`（1 采纳 / 0 拒绝 / -1 修改后采纳）
 
-> **实现注记**：`AIServiceImpl` 中 LLM 返回的 JSON 解析仍为 TODO，当前 `nodes` 可能为空列表；元数据中的 `modelUsed` 等为占位值。
+> **实现注记**：LLM/Embedding 通过 `AiClientConfiguration` 按配置注入；`metadata.modelUsed` 与 `processingTimeMs` 为实测值。
 
 ### 5.5 执行
 
@@ -256,8 +256,9 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 | `app.jwt.secret` | `JWT_SECRET` | ≥256 位 |
 | `app.jwt.expiration` | `JWT_EXPIRATION` | 默认 86400000 ms |
 | `app.encryption.key` | `ENCRYPTION_KEY` | 32 字节，数据源配置加密 |
-| `app.llm.provider` | `LLM_PROVIDER` | `openai` / `zhipu` |
-| `app.embedding.provider` | `EMBEDDING_PROVIDER` | 向量模型提供商 |
+| `app.llm.provider` | `LLM_PROVIDER` | `qianwen`（默认）/ `openai` / `zhipu` |
+| `app.llm.qianwen.api-key` | `QIANWEN_API_KEY` / `DASHSCOPE_API_KEY` | 通义千问 DashScope |
+| `app.embedding.provider` | `EMBEDDING_PROVIDER` | 默认 `qianwen`；维度见 `app.embedding.*.dimensions` |
 | `spring.profiles.active` | — | 默认 `dev` |
 
 开发库配置见 `application-dev.yml`（数据库名通常为 `dataflow_ai`）。
@@ -899,7 +900,7 @@ Pipeline 详情。
 | README 路径 | README 写 `/datasources`、`/executions`，实际为 `data-sources`、`execution` |
 | 分页 | `GET /pipelines` 的 page/size 参数未接入 Repository |
 | 全局异常 | `GlobalExceptionHandler` 为空，错误响应格式不统一 |
-| AI 解析 | `generate-transforms` 的 LLM JSON 解析待完成 |
+| AI 解析 | ✅ 已实现 `TransformResponseParser`；历史模式匹配等待 TODO-011 |
 | 用户密码 | `GET` 用户接口可能返回 `passwordHash`，生产应使用 DTO 脱敏 |
 
 ---

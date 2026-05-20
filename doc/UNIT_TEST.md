@@ -3,7 +3,7 @@
 > 追踪每个 REST 接口在 **Controller → Service → Repository → JPA** 的调用链，并记录各层测试覆盖状态。  
 > **范围**：后端 Java 模块（不含 `web/` 前端）。  
 > **关联**：[ARCHITECTURE_AND_API.md](./ARCHITECTURE_AND_API.md)、[BACKEND_TODO.md](./BACKEND_TODO.md)  
-> **更新日期**：2026-05-18（已补充各层单测并迁移 Controller 测试至 api 模块）
+> **更新日期**：2026-05-20（P0：LLM/Embedding/解析/加密单测）
 
 ---
 
@@ -73,7 +73,7 @@ mvn test
 | 层级 | 状态 | 说明 |
 |------|------|------|
 | **Controller** | ✅ **28/28** | 6 个 `*ControllerTest`，Mock Service，覆盖全部端点 |
-| **Service** | 🟡 | 7 个 `*ServiceImplTest`；核心路径有断言；未实现功能见 `@Disabled` |
+| **Service** | 🟡 | 7 个 `*ServiceImplTest`；`AIServiceImplTest` 含 LLM JSON 解析断言 |
 | **Repository** | 🟡 | 5 个 `*RepositoryImplTest`；Mock JpaRepository 委托；向量/SQL 集成 ⏸ |
 | **JPA 集成** | ⬜ | 无 `@DataJpaTest` / Testcontainers |
 
@@ -84,7 +84,7 @@ mvn test
 | dataflow-ai-api | 6 Controller + 2 support | ~30 | 0 |
 | dataflow-ai-business | 7 Service + 5 Repository | ~35 | 8 |
 | dataflow-ai-bootstrap | 0 | 0 | — |
-| dataflow-ai-infrastructure | 0 | 0 | — |
+| dataflow-ai-infrastructure | 4 | ~15 | LLM/Embedding/加密 |
 
 ### 2.3 测试类索引
 
@@ -102,7 +102,11 @@ mvn test
 | `DataSourceServiceImplTest` | business | `DataSourceServiceImpl` | 2+⏸1 | preview ⏸ |
 | `PipelineServiceImplTest` | business | `PipelineServiceImpl` | 2+⏸1 | preview ⏸ |
 | `ExecutionServiceImplTest` | business | `ExecutionServiceImpl` | 3+⏸1 | async 全链路 ⏸ |
-| `AIServiceImplTest` | business | `AIServiceImpl` | 3+⏸1 | LLM 解析 ⏸ |
+| `AIServiceImplTest` | business | `AIServiceImpl` | 4 | 含 `generateTransforms_parsesLlmResponse` |
+| `TransformResponseParserTest` | infrastructure | `TransformResponseParser` | 4 | JSON / markdown |
+| `OpenAiCompatibleLlmClientTest` | infrastructure | `OpenAiCompatibleLlmClient` | 4 | MockWebServer |
+| `OpenAiCompatibleEmbeddingGeneratorTest` | infrastructure | `EmbeddingGenerator` | 4 | MockWebServer |
+| `EncryptionServiceTest` | infrastructure | `EncryptionService` | 4 | 32 字节密钥 |
 | `PermissionServiceImplTest` | business | `PermissionServiceImpl` | 4 | 纯逻辑 |
 | `AuditLogServiceImplTest` | business | `AuditLogServiceImpl` | 1+⏸1 | |
 | `UserRepositoryImplTest` | business | `UserRepositoryImpl` | 3 | |
@@ -115,7 +119,7 @@ mvn test
 
 1. `@WebMvcTest` 路径使用 `/v1/...`，与生产 `/api/v1/...` 等价（仅差 context-path）。
 2. 用户不存在等场景仍返回 5xx（`GlobalExceptionHandler` 未实现），Controller 测仅断言 `is5xxServerError()`。
-3. 占位实现（数据源 test/preview、Pipeline preview、LLM 解析）的 Service 用例已标注或 `@Disabled`。
+3. 占位实现（数据源 test/preview、Pipeline preview）的 Service 用例仍可能 `@Disabled`；LLM 解析与加密已有 infrastructure/business 单测。
 
 ---
 
@@ -496,7 +500,7 @@ AIController.submitFeedback
 | T1 | 修复并跑通 `UserControllerTest`（路径、JSON body） | U1–U5 |
 | T2 | 新增 `AuthControllerTest` | A1, A2 |
 | T3 | `UserServiceImplTest`（login/create 密码编码） | A1, U3 |
-| T4 | `AIServiceImplTest`（Mock LLM/Embedding） | AI1–AI3 |
+| T4 | ✅ `AIServiceImplTest` + infrastructure LLM/Embedding 单测 | AI1–AI3 |
 
 ### 7.2 P1 — 核心业务 API
 
@@ -519,7 +523,7 @@ AIController.submitFeedback
 | 序号 | 任务 | 关联 |
 |------|------|------|
 | T11 | `PipelineOrchestratorTest`（Mock Reader/Processor/Writer） | P6 |
-| T12 | `JwtProviderTest`、`EncryptionServiceTest` | A1, D1 |
+| T12 | `JwtProviderTest`；✅ `EncryptionServiceTest` | A1, D1 |
 | T13 | `FieldMapperProcessor` 等 Transform 单测 | 引擎 |
 
 ---
@@ -553,6 +557,7 @@ AIController.submitFeedback
 |------|------|
 | 2026-05-18 | 初版：28 API 全量追踪；登记 `UserControllerTest` 10 用例 |
 | 2026-05-18 | 补充 api/business 全层单测；Controller 迁至 `dataflow-ai-api/src/test`；新增 `TestSecurityConfig`、`WithMockUserId`；8 个 `@Disabled` 占位用例 |
+| 2026-05-20 | P0：`TransformResponseParserTest`、`OpenAiCompatibleLlmClientTest`、`OpenAiCompatibleEmbeddingGeneratorTest`、`EncryptionServiceTest`；启用 `AIServiceImplTest.generateTransforms_parsesLlmResponse` |
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 基于 `doc/ARCHITECTURE_AND_API.md` 与当前 Java 源码对照梳理。  
 > **范围**：`dataflow-ai-*` 模块及数据库脚本；不含 `web/` 前端。  
-> **更新日期**：2026-05-18
+> **更新日期**：2026-05-20
 
 ---
 
@@ -19,17 +19,16 @@
 
 ---
 
-## P0 — 阻塞核心能力
+## P0 — 阻塞核心能力（已完成 2026-05-20）
 
-### TODO-001 OpenAI / 智谱 LLM 真实 HTTP 调用
+### TODO-001 OpenAI / 智谱 / 通义千问 LLM 真实 HTTP 调用
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始（占位返回 `"{}"`） |
-| **位置** | `OpenAIClient.java`、`ZhiPuClient.java` |
-| **现状** | `generateTransforms()` 仅打日志；`testConnection()` 仅检查 apiKey 非空 |
-| **影响** | AI 生成、流水线内 `AI_ASSISTED` 节点均无法得到真实结果 |
-| **验收** | 按 `app.llm.provider` 调用对应 Chat Completions；可配置 baseUrl/model；失败有明确错误码 |
+| **状态** | ✅ 已完成 |
+| **位置** | `OpenAiCompatibleLlmClient`、`AiClientConfiguration` |
+| **实现** | OpenAI 兼容 Chat Completions；`qianwen`（DashScope 兼容模式）为默认；失败抛 `LlmApiException` |
+| **配置** | `app.llm.provider`、`app.llm.{qianwen,openai,zhipu}.*`；环境变量 `QIANWEN_API_KEY` / `DASHSCOPE_API_KEY` |
 
 ---
 
@@ -37,11 +36,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `AIServiceImpl.generateTransforms()`（代码内 TODO） |
-| **现状** | `transforms` 固定为 `List.of()`，写入 `ai_helpers.generated_nodes` 为空 |
-| **影响** | `/v1/ai/generate-transforms` 对外无可用节点 |
-| **验收** | 约定 JSON Schema（节点 id/type/config/dependsOn）；解析失败返回可读错误；`metadata.processingTimeMs` 为实测值 |
+| **状态** | ✅ 已完成 |
+| **位置** | `TransformResponseParser`、`AIServiceImpl.generateTransforms()` |
+| **实现** | 解析 `nodes[]`（nodeId/type/config/dependsOn）；失败抛 `BusinessException`；`processingTimeMs` 实测 |
 
 ---
 
@@ -49,11 +46,10 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `OpenAIClient.generateEmbedding()`、`ZhiPuClient.generateEmbedding()`、`EmbeddingClient` |
-| **现状** | 返回全零或固定长度 `float[1536]`；失败时仍返回零向量 |
-| **影响** | 向量检索、相似指令搜索、HNSW 索引**语义无效** |
-| **验收** | 独立 `EmbeddingClient` 实现（或 LLM 客户端拆分）；维度与 `app.embedding.*.dimensions`、库表 `vector` 一致；智谱 1024 / OpenAI 1536 可配置 |
+| **状态** | ✅ 已完成 |
+| **位置** | `EmbeddingGenerator`、`OpenAiCompatibleEmbeddingGenerator`、`EmbeddingClient` |
+| **实现** | 独立 Embedding 实现；按 `app.embedding.provider` 切换；失败不再返回零向量 |
+| **维度** | 通义默认 1024、OpenAI 1536、智谱 1024（可配置） |
 
 ---
 
@@ -61,11 +57,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `AIServiceImpl`（硬编码 `@Resource(name = "openAIClient")`）、`EmbeddingClient` |
-| **现状** | `application.yml` 有 `app.llm.provider` / `app.embedding.provider`，运行期未切换 |
-| **影响** | 配置 `zhipu` 仍走 OpenAI 占位 Bean |
-| **验收** | `@ConditionalOnProperty` 或 Factory 按 provider 注入；`metadata.modelUsed` 反映实际模型 |
+| **状态** | ✅ 已完成 |
+| **位置** | `AiClientConfiguration`、`AIServiceImpl` |
+| **实现** | `@ConditionalOnProperty` 注册单一 `@Primary` Bean；`metadata.modelUsed` 来自 `llmClient.getModelName()` |
 
 ---
 
@@ -73,11 +67,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 缺陷 |
-| **位置** | `EncryptionService` 使用 `@Value("${encryption.secret:...}")`；`application.yml` 为 `app.encryption.key` |
-| **现状** | 生产/开发配置的 `ENCRYPTION_KEY` 可能**未生效**，始终用默认 16 字节密钥 |
-| **影响** | 数据源 `connectionConfig` 加密形同虚设或与环境不一致 |
-| **验收** | 统一为 `app.encryption.key`；密钥长度校验（32 字节）；加解密单测 |
+| **状态** | ✅ 已完成 |
+| **位置** | `EncryptionService` |
+| **实现** | 读取 `app.encryption.key`；启动校验恰好 32 字节 UTF-8；AES-256；`EncryptionServiceTest` |
 
 ---
 
@@ -468,11 +460,17 @@
 
 | 优先级 | 数量 | 代表项 |
 |--------|------|--------|
-| P0 | 5 | LLM/Embedding 真调用、解析节点、提供商切换、加密配置 |
+| P0 | 0（已完成 5 项） | — |
 | P1 | 10 | 数据源测试/预览、Pipeline 预览、AI 闭环、鉴权、AI_ASSISTED |
 | P2 | 16 | 权限引擎、调度、审计、异常、分页、Flyway、分布式取消 |
 | P3 | 9 | 配置修正、测试、重试、并行 DAG、工程清理 |
-| **合计** | **40** | — |
+| **合计** | **35** | P0 五项已移入「已完成」 |
+
+---
+
+## 已完成（P0，2026-05-20）
+
+- TODO-001～005：见上文 P0 各节（含通义千问 `qianwen` 默认提供商）
 
 ---
 
