@@ -33,7 +33,10 @@ public interface AiHelperRepository {
     /**
      * 向量搜索相似指令
      */
-    List<AiHelper> searchByEmbedding(float[] embedding, double threshold, int limit);
+    /**
+     * @param maxCosineDistance pgvector 余弦距离上限（由 minSimilarity 换算：1 - similarity）
+     */
+    List<AiHelper> searchByEmbedding(float[] embedding, double maxCosineDistance, int limit);
 
     /**
      * 保存

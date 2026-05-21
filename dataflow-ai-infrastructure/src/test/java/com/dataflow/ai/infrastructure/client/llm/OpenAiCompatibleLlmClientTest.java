@@ -25,12 +25,11 @@ class OpenAiCompatibleLlmClientTest {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
         String baseUrl = mockWebServer.url("/v1").toString().replaceAll("/$", "");
-        System.out.println("baseUrl:"+baseUrl);
         client = new OpenAiCompatibleLlmClient(
                 WebClient.builder(),
-                "",
-                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-                "qwen-plus",
+                "test-key",
+                baseUrl,
+                "gpt-4",
                 100,
                 0.1,
                 "Test");
@@ -61,6 +60,17 @@ class OpenAiCompatibleLlmClientTest {
     }
 
     @Test
+    @DisplayName("complete - 自定义 system/user 提示词")
+    void complete_customPrompts() {
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"choices\":[{\"message\":{\"content\":\"{\\\"k\\\":1}\"}}]}")
+                .addHeader("Content-Type", "application/json"));
+
+        String content = client.complete("sys", "user msg", Map.of());
+        assertEquals("{\"k\":1}", content);
+    }
+
+    @Test
     @DisplayName("generateTransforms - 无 API Key 失败")
     void generateTransforms_missingApiKey() {
         OpenAiCompatibleLlmClient noKey = new OpenAiCompatibleLlmClient(
@@ -84,10 +94,5 @@ class OpenAiCompatibleLlmClientTest {
                 .setBody("{\"choices\":[{\"message\":{\"content\":\"pong\"}}]}")
                 .addHeader("Content-Type", "application/json"));
         assertTrue(client.testConnection());
-    }
-
-    @Test
-    void testConnection(){
-        System.out.println(client.testConnection());
     }
 }

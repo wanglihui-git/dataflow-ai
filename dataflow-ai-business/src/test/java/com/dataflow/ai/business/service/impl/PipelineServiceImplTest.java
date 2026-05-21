@@ -1,12 +1,12 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.business.engine.preview.PipelinePreviewExecutor;
 import com.dataflow.ai.business.repository.PipelineRepository;
 import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,10 +14,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +33,9 @@ class PipelineServiceImplTest {
 
     @Mock
     private ExecutionService executionService;
+
+    @Mock
+    private PipelinePreviewExecutor pipelinePreviewExecutor;
 
     @InjectMocks
     private PipelineServiceImpl pipelineService;
@@ -61,7 +67,15 @@ class PipelineServiceImplTest {
     }
 
     @Test
-    @Disabled("待实现 previewTransform 后补充")
-    void previewTransform_placeholder() {
+    @DisplayName("previewTransform - 委托 PipelinePreviewExecutor")
+    void previewTransform_delegatesToExecutor() throws Exception {
+        Pipeline pipeline = Pipeline.builder().id("pipe-1").name("p").build();
+        when(pipelinePreviewExecutor.preview(pipeline, 10))
+                .thenReturn(Map.of("columns", List.of("id"), "rows", List.of(), "rowCount", 0));
+
+        Map<String, Object> result = pipelineService.previewTransform(pipeline, 10);
+
+        assertEquals(0, result.get("rowCount"));
+        verify(pipelinePreviewExecutor).preview(pipeline, 10);
     }
 }

@@ -2,7 +2,10 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.api.support.TestSecurityConfig;
 import com.dataflow.ai.api.support.WithMockUserId;
+import com.dataflow.ai.api.support.ControllerTestAuthSupport;
 import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.service.PermissionService;
+import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
@@ -45,6 +48,12 @@ class DataSourceControllerTest {
     @MockBean
     private DataSourceService dataSourceService;
 
+    @MockBean
+    private UserService userService;
+
+    @MockBean
+    private PermissionService permissionService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -52,12 +61,14 @@ class DataSourceControllerTest {
 
     @BeforeEach
     void setUp() {
+        ControllerTestAuthSupport.stubAuth(userService, permissionService);
         dataSource = DataSource.builder()
                 .id("ds-001")
                 .name("test-mysql")
                 .type(DataSourceType.MYSQL)
                 .createdBy("user-001")
                 .build();
+        when(dataSourceService.findById("ds-001")).thenReturn(Optional.of(dataSource));
     }
 
     @Test

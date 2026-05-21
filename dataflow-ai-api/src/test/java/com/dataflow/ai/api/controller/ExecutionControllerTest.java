@@ -2,8 +2,13 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.api.support.TestSecurityConfig;
 import com.dataflow.ai.api.support.WithMockUserId;
+import com.dataflow.ai.api.support.ControllerTestAuthSupport;
 import com.dataflow.ai.business.service.ExecutionService;
+import com.dataflow.ai.business.service.PermissionService;
+import com.dataflow.ai.business.service.PipelineService;
+import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
+import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,15 +40,28 @@ class ExecutionControllerTest {
     @MockBean
     private ExecutionService executionService;
 
+    @MockBean
+    private PipelineService pipelineService;
+
+    @MockBean
+    private UserService userService;
+
+    @MockBean
+    private PermissionService permissionService;
+
     private ExecutionRun executionRun;
 
     @BeforeEach
     void setUp() {
+        ControllerTestAuthSupport.stubAuth(userService, permissionService);
+        when(pipelineService.findById("pipe-001")).thenReturn(Optional.of(
+                Pipeline.builder().id("pipe-001").ownerId(ControllerTestAuthSupport.TEST_USER_ID).build()));
         executionRun = ExecutionRun.builder()
                 .id("run-001")
                 .pipelineId("pipe-001")
                 .status(ExecutionStatus.RUNNING)
                 .build();
+        when(executionService.findById("run-001")).thenReturn(Optional.of(executionRun));
     }
 
     @Test

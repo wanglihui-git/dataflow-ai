@@ -1,11 +1,14 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.business.engine.source.SourceReader;
+import com.dataflow.ai.business.engine.source.SourceReaderFactory;
 import com.dataflow.ai.business.repository.DataSourceRepository;
+import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
+import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,11 +16,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +37,12 @@ class DataSourceServiceImplTest {
 
     @Mock
     private EncryptionService encryptionService;
+
+    @Mock
+    private SourceReaderFactory sourceReaderFactory;
+
+    @Mock
+    private SourceReader sourceReader;
 
     @InjectMocks
     private DataSourceServiceImpl dataSourceService;
@@ -54,20 +67,50 @@ class DataSourceServiceImplTest {
     }
 
     @Test
-    @DisplayName("testConnection - 占位实现恒为 true")
-    void testConnection_placeholderReturnsTrue() {
+    @DisplayName("testConnection - 委托 SourceReader")
+    void testConnection_delegatesToReader() {
         DataSource ds = DataSource.builder()
                 .id("ds-1")
+                .type(DataSourceType.MYSQL)
                 .connectionConfig(Map.of("k", "v"))
                 .build();
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
-        when(encryptionService.decrypt(anyMap())).thenReturn(Map.of("k", "v"));
+        when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
+        when(sourceReader.testConnection(ds)).thenReturn(true);
 
         assertTrue(dataSourceService.testConnection("ds-1"));
     }
 
     @Test
-    @Disabled("待实现真实预览逻辑后补充：previewSourceData 应返回 columns/rows")
-    void previewSourceData_placeholder() {
+    @DisplayName("testConnection - 失败返回 false")
+    void testConnection_failureReturnsFalse() {
+        DataSource ds = DataSource.builder().id("ds-1").type(DataSourceType.API).build();
+        when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
+        when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
+        when(sourceReader.testConnection(ds)).thenReturn(false);
+
+        assertFalse(dataSourceService.testConnection("ds-1"));
+    }
+
+    @Test
+    @DisplayName("previewSourceData - 返回 columns 与 rows")
+    void previewSourceData_returnsColumnsAndRows() throws Exception {
+        DataSource ds = DataSource.builder()
+                .id("ds-1")
+                .type(DataSourceType.MYSQL)
+                .build();
+        when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
+        when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
+
+        Record record = new Record();
+        record.setId("r1");
+        record.set("id", 1);
+        record.set("name", "a");
+        when(sourceReader.preview(any(SourceConfig.class), anyInt())).thenReturn(List.of(record));
+
+        Map<String, Object> result = dataSourceService.previewSourceData("ds-1", "users", null, 5);
+
+        assertEquals(1, result.get("rowCount"));
+        assertTrue(((List<?>) result.get("columns")).contains("name"));
     }
 }

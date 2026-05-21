@@ -1,6 +1,7 @@
 package com.dataflow.ai.business.service.impl;
 
 import com.dataflow.ai.business.service.PermissionService;
+import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
@@ -11,6 +12,19 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class PermissionServiceImpl implements PermissionService {
+
+    @Override
+    public boolean canAccessDataSource(DataSource dataSource, User user) {
+        if (hasAdminRole(user)) {
+            return true;
+        }
+        return dataSource.getCreatedBy() != null && dataSource.getCreatedBy().equals(user.getId());
+    }
+
+    @Override
+    public boolean canModifyDataSource(DataSource dataSource, User user) {
+        return canAccessDataSource(dataSource, user) && hasDeveloperRole(user);
+    }
 
     @Override
     public boolean hasPipelineAccess(Pipeline pipeline, User user) {

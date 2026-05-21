@@ -1,11 +1,12 @@
 package com.dataflow.ai.business.service.impl;
 
-import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.business.engine.preview.PipelinePreviewExecutor;
 import com.dataflow.ai.business.repository.PipelineRepository;
 import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.business.service.PipelineService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
+import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,9 @@ public class PipelineServiceImpl implements PipelineService {
 
     @Resource
     private ExecutionService executionService;
+
+    @Resource
+    private PipelinePreviewExecutor pipelinePreviewExecutor;
 
     @Override
     public Optional<Pipeline> findById(String id) {
@@ -105,9 +109,16 @@ public class PipelineServiceImpl implements PipelineService {
 
     @Override
     public Map<String, Object> previewTransform(Pipeline pipeline, int sampleSize) {
-        // TODO: 实现实际的转换预览逻辑
+        if (sampleSize <= 0) {
+            sampleSize = 10;
+        }
         log.info("Previewing transform for pipeline: {}, sampleSize: {}", pipeline.getName(), sampleSize);
-        return Map.of();
+        try {
+            return pipelinePreviewExecutor.preview(pipeline, sampleSize);
+        } catch (Exception e) {
+            log.error("Pipeline preview failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Pipeline 预览失败: " + e.getMessage(), e);
+        }
     }
 
     @Override

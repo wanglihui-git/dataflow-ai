@@ -1,11 +1,15 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.business.engine.source.SourceReader;
+import com.dataflow.ai.business.engine.source.SourceReaderFactory;
 import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.util.RecordPreviewMapper;
+import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
-import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
+import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +37,9 @@ public class DataSourceServiceImpl implements DataSourceService {
     @Resource
     private EncryptionService encryptionService;
 
+    @Resource
+    private SourceReaderFactory sourceReaderFactory;
+
     @Override
     public Optional<DataSource> findById(String id) {
         return dataSourceRepository.findById(id);
@@ -50,7 +57,6 @@ public class DataSourceServiceImpl implements DataSourceService {
 
     @Override
     public DataSource createDataSource(CreateDataSourceRequest request, String createdBy) {
-        // 加密敏感配置
         Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
         DataSource dataSource = DataSource.builder()
                 .id(UUID.randomUUID().toString())
@@ -72,7 +78,6 @@ public class DataSourceServiceImpl implements DataSourceService {
         }
         DataSource dataSource = existingOpt.get();
 
-        // 更新字段
         if (request.getName() != null) {
             dataSource.setName(request.getName());
         }
@@ -80,7 +85,6 @@ public class DataSourceServiceImpl implements DataSourceService {
             dataSource.setType(request.getType());
         }
         if (request.getConnectionConfig() != null) {
-            // 加密敏感配置
             Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
             dataSource.setConnectionConfig(encryptedConfig);
         }
@@ -96,29 +100,49 @@ public class DataSourceServiceImpl implements DataSourceService {
 
     @Override
     public boolean testConnection(String dataSourceId) {
-        Optional<DataSource> dataSourceOpt = dataSourceRepository.findById(dataSourceId);
-        if (dataSourceOpt.isEmpty()) {
-            throw new RuntimeException("数据源不存在");
-        }
-        DataSource dataSource = dataSourceOpt.get();
-        // 解密配置
-        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        // TODO: 实现实际的连接测试逻辑
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
+                .orElseThrow(() -> new RuntimeException("数据源不存在"));
         log.info("Testing connection to datasource: {}", dataSource.getName());
-        return true;
+        SourceReader reader = sourceReaderFactory.createReader(dataSource);
+        return reader.testConnection(dataSource);
     }
 
     @Override
     public Map<String, Object> previewSourceData(String dataSourceId, String tableName, String query, int sampleSize) {
-        Optional<DataSource> dataSourceOpt = dataSourceRepository.findById(dataSourceId);
-        if (dataSourceOpt.isEmpty()) {
-            throw new RuntimeException("数据源不存在");
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
+                .orElseThrow(() -> new RuntimeException("数据源不存在"));
+        if (sampleSize <= 0) {
+            sampleSize = 10;
         }
-        DataSource dataSource = dataSourceOpt.get();
-        // 解密配置
-        Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        // TODO: 实现实际的数据预览逻辑
-        log.info("Previewing data from datasource: {}, table: {}, sampleSize: {}", dataSource.getName(), tableName, sampleSize);
-        return new HashMap<>();
+        log.info("Previewing data from datasource: {}, table: {}, sampleSize: {}",
+                dataSource.getName(), tableName, sampleSize);
+
+        SourceConfig sourceConfig = buildPreviewSourceConfig(dataSource, tableName, query, sampleSize);
+        try {
+            SourceReader reader = sourceReaderFactory.createReader(dataSource);
+            List<Record> records = reader.preview(sourceConfig, sampleSize);
+            Map<String, Object> result = new HashMap<>(RecordPreviewMapper.toPreviewMap(records));
+            result.put("dataSourceId", dataSourceId);
+            result.put("type", dataSource.getType().name());
+            return result;
+        } catch (Exception e) {
+            log.error("Preview failed for datasource {}: {}", dataSourceId, e.getMessage(), e);
+            throw new RuntimeException("数据预览失败: " + e.getMessage(), e);
+        }
+    }
+
+    private SourceConfig buildPreviewSourceConfig(DataSource dataSource, String tableName, String query, int sampleSize) {
+        SourceConfig.SourceConfigBuilder builder = SourceConfig.builder()
+                .dataSourceId(dataSource.getId())
+                .type(dataSource.getType());
+        if (query != null && !query.isBlank()) {
+            builder.query(query.trim());
+        } else if (tableName != null && !tableName.isBlank()) {
+            builder.tableName(tableName.trim());
+            builder.query("SELECT * FROM " + tableName.trim() + " LIMIT " + sampleSize);
+        } else {
+            throw new RuntimeException("预览需要指定 tableName 或 query 参数");
+        }
+        return builder.build();
     }
 }

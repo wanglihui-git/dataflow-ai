@@ -26,14 +26,8 @@ class QianwenLlmClientTest {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
         String endpoint = mockWebServer.url("/generation").toString();
-        System.out.println("endpoint:"+endpoint);
         client = new QianwenLlmClient(
-                WebClient.builder(),
-                "",
-                "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-                "qwen-plus",
-                100,
-                0.1);
+                WebClient.builder(), "test-key", endpoint, "qwen-plus", 100, 0.1);
     }
 
     @AfterEach
@@ -85,11 +79,5 @@ class QianwenLlmClientTest {
         QianwenLlmClient noKey = new QianwenLlmClient(
                 WebClient.builder(), "", mockWebServer.url("/").toString(), "m", 10, 0.1);
         assertThrows(LlmApiException.class, () -> noKey.generateTransforms("x", Map.of()));
-    }
-
-    @Test
-    void testConnection(){
-        System.out.println(client.testConnection());
-
     }
 }

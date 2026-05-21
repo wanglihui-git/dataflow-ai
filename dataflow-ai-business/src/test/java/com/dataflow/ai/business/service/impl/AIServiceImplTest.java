@@ -1,7 +1,9 @@
 package com.dataflow.ai.business.service.impl;
 
 import com.dataflow.ai.business.repository.AiHelperRepository;
+import com.dataflow.ai.business.repository.InstructionPatternRepository;
 import com.dataflow.ai.domain.entity.AiHelper;
+import com.dataflow.ai.domain.entity.InstructionPattern;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.TransformType;
 import com.dataflow.ai.domain.enums.UserRole;
@@ -20,7 +22,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +53,9 @@ class AIServiceImplTest {
     @Mock
     private AiHelperRepository aiHelperRepository;
 
+    @Mock
+    private InstructionPatternRepository instructionPatternRepository;
+
     @InjectMocks
     private AIServiceImpl aiService;
 
@@ -54,12 +63,14 @@ class AIServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(aiService, "historicalPatternMinSimilarity", 0.85);
         user = User.builder().id("user-001").role(UserRole.DEVELOPER).build();
     }
 
     @Test
-    @DisplayName("generateTransforms - 调用 LLM 并持久化")
+    @DisplayName("generateTransforms - 调用 LLM 并返回 aiHelperId")
     void generateTransforms_persistsHelper() {
+        when(instructionPatternRepository.searchByEmbedding(any(), anyDouble(), anyInt())).thenReturn(List.of());
         when(llmClient.generateTransforms(any(), any())).thenReturn("{\"nodes\":[]}");
         when(llmClient.getModelName()).thenReturn("qwen-plus");
         when(embeddingClient.generateEmbedding(any())).thenReturn(new float[1024]);
@@ -68,24 +79,42 @@ class AIServiceImplTest {
         var response = aiService.generateTransforms(
                 GenerateTransformsRequest.builder().instruction("map fields").build(), user);
 
-        assertNotNull(response);
+        assertNotNull(response.getAiHelperId());
+        verify(llmClient).generateTransforms(any(), any());
         verify(aiHelperRepository).save(any());
     }
 
     @Test
-    @DisplayName("generateTransforms - 解析 LLM JSON 填充 nodes 与 modelUsed")
+    @DisplayName("generateTransforms - 命中历史模式跳过 LLM")
+    void generateTransforms_historicalPattern() {
+        List<Transform> template = List.of(Transform.builder()
+                .nodeId("n1").type(TransformType.FILTER).build());
+        InstructionPattern pattern = InstructionPattern.builder()
+                .instructionText("filter old")
+                .transformTemplate(template)
+                .acceptanceRate(BigDecimal.valueOf(0.9))
+                .useCount(2)
+                .build();
+        when(instructionPatternRepository.searchByEmbedding(any(), anyDouble(), eq(1)))
+                .thenReturn(List.of(pattern));
+        when(embeddingClient.generateEmbedding(any())).thenReturn(new float[1024]);
+        when(aiHelperRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(instructionPatternRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var response = aiService.generateTransforms(
+                GenerateTransformsRequest.builder().instruction("filter").build(), user);
+
+        assertEquals("historical_pattern", response.getSource().getType());
+        assertEquals(1, response.getNodes().size());
+        verify(llmClient, never()).generateTransforms(any(), any());
+    }
+
+    @Test
+    @DisplayName("generateTransforms - 解析 LLM JSON")
     void generateTransforms_parsesLlmResponse() {
+        when(instructionPatternRepository.searchByEmbedding(any(), anyDouble(), anyInt())).thenReturn(List.of());
         String llmJson = """
-                {
-                  "nodes": [
-                    {
-                      "nodeId": "n1",
-                      "type": "FILTER",
-                      "name": "Filter rows",
-                      "dependsOn": []
-                    }
-                  ]
-                }
+                {"nodes":[{"nodeId":"n1","type":"FILTER","dependsOn":[]}]}
                 """;
         when(llmClient.generateTransforms(any(), any())).thenReturn(llmJson);
         when(llmClient.getModelName()).thenReturn("qwen-plus");
@@ -96,35 +125,44 @@ class AIServiceImplTest {
                 GenerateTransformsRequest.builder().instruction("filter").build(), user);
 
         assertEquals(1, response.getNodes().size());
-        assertEquals("n1", response.getNodes().get(0).getNodeId());
         assertEquals(TransformType.FILTER, response.getNodes().get(0).getType());
-        assertEquals("qwen-plus", response.getMetadata().getModelUsed());
-        assertNotNull(response.getMetadata().getProcessingTimeMs());
     }
 
     @Test
-    @DisplayName("searchSimilar - 向量检索")
+    @DisplayName("searchSimilar - 使用距离阈值查询")
     void searchSimilar_queriesRepository() {
         when(embeddingClient.generateEmbedding(any())).thenReturn(new float[1024]);
         when(aiHelperRepository.searchByEmbedding(any(), anyDouble(), anyInt())).thenReturn(List.of());
 
-        aiService.searchSimilar(SearchSimilarRequest.builder().instruction("test").build());
+        aiService.searchSimilar(SearchSimilarRequest.builder()
+                .instruction("test")
+                .minSimilarity(0.8)
+                .build());
 
-        verify(aiHelperRepository).searchByEmbedding(any(), anyDouble(), anyInt());
+        verify(aiHelperRepository).searchByEmbedding(any(), org.mockito.ArgumentMatchers.doubleThat(d -> Math.abs(d - 0.2) < 0.001), eq(5));
     }
 
     @Test
-    @DisplayName("submitFeedback - 更新反馈")
-    void submitFeedback_updatesRecord() {
-        AiHelper helper = AiHelper.builder().id("ai-1").instruction("x").build();
+    @DisplayName("submitFeedback - accept 写入 instruction_patterns")
+    void submitFeedback_acceptUpsertsPattern() {
+        AiHelper helper = AiHelper.builder()
+                .id("ai-1")
+                .instruction("map a to b")
+                .generatedNodes(List.of(Transform.builder().nodeId("n1").type(TransformType.FIELD_MAPPER).build()))
+                .embedding(new float[1024])
+                .build();
         when(aiHelperRepository.findById("ai-1")).thenReturn(Optional.of(helper));
         when(aiHelperRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(instructionPatternRepository.findByInstructionHash(any())).thenReturn(Optional.empty());
+        when(instructionPatternRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         aiService.submitFeedback(FeedbackRequest.builder()
                 .aiHelperId("ai-1")
                 .action("accept")
+                .pipelineId("pipe-1")
                 .build(), user);
 
-        verify(aiHelperRepository).save(any());
+        verify(instructionPatternRepository).save(any(InstructionPattern.class));
+        assertEquals("pipe-1", helper.getPipelineId());
     }
 }

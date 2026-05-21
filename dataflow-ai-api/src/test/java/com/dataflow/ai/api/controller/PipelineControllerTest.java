@@ -2,7 +2,10 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.api.support.TestSecurityConfig;
 import com.dataflow.ai.api.support.WithMockUserId;
+import com.dataflow.ai.api.support.ControllerTestAuthSupport;
+import com.dataflow.ai.business.service.PermissionService;
 import com.dataflow.ai.business.service.PipelineService;
+import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
@@ -45,6 +48,12 @@ class PipelineControllerTest {
     @MockBean
     private PipelineService pipelineService;
 
+    @MockBean
+    private UserService userService;
+
+    @MockBean
+    private PermissionService permissionService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -53,12 +62,14 @@ class PipelineControllerTest {
 
     @BeforeEach
     void setUp() {
+        ControllerTestAuthSupport.stubAuth(userService, permissionService);
         pipeline = Pipeline.builder().id("pipe-001").name("demo").ownerId("user-001").build();
         executionRun = ExecutionRun.builder()
                 .id("run-001")
                 .pipelineId("pipe-001")
                 .status(ExecutionStatus.PENDING)
                 .build();
+        when(pipelineService.findById("pipe-001")).thenReturn(Optional.of(pipeline));
     }
 
     @Test

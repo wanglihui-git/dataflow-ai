@@ -1,5 +1,6 @@
 package com.dataflow.ai.business.service;
 
+import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
 
@@ -7,6 +8,16 @@ import com.dataflow.ai.domain.entity.User;
  * 权限服务接口
  */
 public interface PermissionService {
+
+    /**
+     * 检查用户是否有权限访问数据源（所有者或管理员）
+     */
+    boolean canAccessDataSource(DataSource dataSource, User user);
+
+    /**
+     * 检查用户是否有权限修改/删除数据源
+     */
+    boolean canModifyDataSource(DataSource dataSource, User user);
 
     /**
      * 检查用户是否有权限访问Pipeline

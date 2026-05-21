@@ -53,6 +53,11 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
 
     @Override
     public String generateTransforms(String prompt, Map<String, Object> context) {
+        return complete(LlmPromptBuilder.SYSTEM_PROMPT, LlmPromptBuilder.buildUserMessage(prompt, context), context);
+    }
+
+    @Override
+    public String complete(String systemPrompt, String userPrompt, Map<String, Object> context) {
         if (apiKey.isBlank()) {
             throw new LlmApiException(providerLabel + " API key is not configured");
         }
@@ -61,12 +66,14 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
         body.put("max_tokens", maxTokens);
         body.put("temperature", temperature);
         ArrayNode messages = body.putArray("messages");
-        ObjectNode system = messages.addObject();
-        system.put("role", "system");
-        system.put("content", LlmPromptBuilder.SYSTEM_PROMPT);
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            ObjectNode system = messages.addObject();
+            system.put("role", "system");
+            system.put("content", systemPrompt);
+        }
         ObjectNode user = messages.addObject();
         user.put("role", "user");
-        user.put("content", LlmPromptBuilder.buildUserMessage(prompt, context));
+        user.put("content", userPrompt);
 
         try {
             String response = webClient.post()
@@ -103,15 +110,11 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
             body.put("model", model);
             body.put("max_tokens", 16);
             ArrayNode messages = body.putArray("messages");
-            ObjectNode system = messages.addObject();
-            system.put("role", "system");
-            system.put("content", LlmPromptBuilder.SYSTEM_PROMPT);
             ObjectNode user = messages.addObject();
             user.put("role", "user");
             user.put("content", "ping");
-            log.info(body.toString());
             webClient.post()
-                    .uri(baseUrl)
+                    .uri("/chat/completions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                     .bodyValue(body)
                     .retrieve()

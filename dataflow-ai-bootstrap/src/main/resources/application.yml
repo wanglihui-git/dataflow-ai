@@ -113,6 +113,10 @@ app:
       model: ${ZHIPU_EMBEDDING_MODEL:embedding-2}
       dimensions: ${ZHIPU_EMBEDDING_DIMENSIONS:1024}
 
+  # AI 辅助
+  ai:
+    historical-pattern-min-similarity: ${AI_HISTORICAL_PATTERN_MIN_SIMILARITY:0.85}
+
   # 权限配置
   permission:
     enabled: ${PERMISSION_ENABLED:true}

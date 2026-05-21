@@ -13,6 +13,11 @@ public interface LLMClient {
     String generateTransforms(String prompt, Map<String, Object> context);
 
     /**
+     * 通用对话补全（自定义 system / user 提示词）
+     */
+    String complete(String systemPrompt, String userPrompt, Map<String, Object> context);
+
+    /**
      * 使用的模型名称
      */
     String getModelName();

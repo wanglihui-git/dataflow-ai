@@ -3,7 +3,7 @@
 > 追踪每个 REST 接口在 **Controller → Service → Repository → JPA** 的调用链，并记录各层测试覆盖状态。  
 > **范围**：后端 Java 模块（不含 `web/` 前端）。  
 > **关联**：[ARCHITECTURE_AND_API.md](./ARCHITECTURE_AND_API.md)、[BACKEND_TODO.md](./BACKEND_TODO.md)  
-> **更新日期**：2026-05-20（P0：LLM/Embedding/解析/加密单测）
+> **更新日期**：2026-05-21（P1：数据源测试/预览、Pipeline 预览、AI 闭环、鉴权单测）
 
 ---
 
@@ -301,9 +301,9 @@ updateDataSource(id, request)
 
 **D5 delete** → `deleteById`
 
-**D6 test** → `findById` → `decrypt` → **TODO 实际探测** → 当前恒 `true`
+**D6 test** → `findById` → `decrypt` → `SourceReaderFactory` → `testConnection()`
 
-**D7 preview** → `findById` → `decrypt` → **TODO 实际采样** → 当前空 `HashMap`
+**D7 preview** → `findById` → `decrypt` → `SourceReader.preview` → `RecordPreviewMapper`（columns/rows/rowCount）
 
 | # | C | S | R | 测试类 |
 |---|---|---|---|--------|
@@ -312,8 +312,8 @@ updateDataSource(id, request)
 | D3 | ⬜ | ⬜ | ⬜ | C 未单独测 404；可补 |
 | D4 | ✅ | ⬜ | ⬜ | |
 | D5 | ✅ | ⬜ | ⬜ | |
-| D6 | ✅ | ✅ | ⬜ | Service 占位 true |
-| D7 | ✅ | ⏸ | ⬜ | `previewSourceData_placeholder` ⏸ |
+| D6 | ✅ | ✅ | ⬜ | `DataSourceServiceImplTest`（Mock `SourceReader`） |
+| D7 | ✅ | ✅ | ⬜ | 同上 |
 
 **JPA**：`DataSourceJpaRepository` — `findById`, `findByCreatedBy`, `findByType`, `findByName`, `save`, `deleteById`
 
@@ -356,7 +356,7 @@ PipelineController.run(id)
 | P5 | ✅ | ⬜ | ⬜ | |
 | P6 | ✅ | ✅ | ⬜ | `executePipeline`；`startExecution` ⏸ |
 | P7 | ✅ | ⬜ | ✅ | |
-| P8 | ✅ | ⏸ | ⬜ | `previewTransform_placeholder` ⏸ |
+| P8 | ✅ | ✅ | ⬜ | `PipelineServiceImplTest` + `PipelinePreviewExecutor` |
 
 **JPA**：
 
@@ -443,9 +443,9 @@ AIController.submitFeedback
 
 | # | C | S | R | 测试类 |
 |---|---|---|---|--------|
-| AI1 | ✅ | ✅ | ✅ | `AI*Test`；LLM 解析 ⏸ |
-| AI2 | ✅ | ✅ | ✅ | pgvector 集成 ⏸ |
-| AI3 | ✅ | ✅ | ✅ | 仅测 accept；reject/modify 可补 |
+| AI1 | ✅ | ✅ | ✅ | `AIServiceImplTest`（含 historical_pattern、aiHelperId） |
+| AI2 | ✅ | ✅ | ✅ | `AIServiceImplTest.searchSimilar`；`VectorSimilarityUtilsTest` |
+| AI3 | ✅ | ✅ | ✅ | accept + `InstructionPattern` upsert；reject/modify 可补 |
 
 **JPA**：`AiHelperJpaRepository` — `findById`, `findByCreatedBy`, `findByPipelineId`, `findWithoutFeedback`, `searchByEmbedding`, `save`, `countByUserFeedback`
 
@@ -502,13 +502,15 @@ AIController.submitFeedback
 | T3 | `UserServiceImplTest`（login/create 密码编码） | A1, U3 |
 | T4 | ✅ `AIServiceImplTest` + infrastructure LLM/Embedding 单测 | AI1–AI3 |
 
-### 7.2 P1 — 核心业务 API
+### 7.2 P1 — 核心业务 API（已完成 2026-05-21）
 
 | 序号 | 任务 | 关联接口 |
 |------|------|----------|
-| T5 | `PipelineControllerTest` + `PipelineServiceImplTest` | P1–P8 |
-| T6 | `ExecutionControllerTest` + `ExecutionServiceImplTest` | E1–E3, P6 |
-| T7 | `DataSourceControllerTest` + `DataSourceServiceImplTest` | D1–D7 |
+| T5 | ✅ `PipelineControllerTest` + `PipelineServiceImplTest`（含 preview） | P1–P8 |
+| T6 | ✅ `ExecutionControllerTest` + `ExecutionServiceImplTest`；鉴权 Mock | E1–E3, P6 |
+| T7 | ✅ `DataSourceControllerTest` + `DataSourceServiceImplTest`（test/preview） | D1–D7 |
+| T7b | ✅ `AIServiceImplTest`、`VectorSimilarityUtilsTest`、`PermissionServiceImplTest` | AI1–AI3、TODO-015 |
+| T7c | ✅ `ControllerTestAuthSupport`（`UserService`/`PermissionService` Mock） | D3–D7、P3–P8、E1–E2 |
 
 ### 7.3 P2 — Repository 集成
 
@@ -558,6 +560,7 @@ AIController.submitFeedback
 | 2026-05-18 | 初版：28 API 全量追踪；登记 `UserControllerTest` 10 用例 |
 | 2026-05-18 | 补充 api/business 全层单测；Controller 迁至 `dataflow-ai-api/src/test`；新增 `TestSecurityConfig`、`WithMockUserId`；8 个 `@Disabled` 占位用例 |
 | 2026-05-20 | P0：`TransformResponseParserTest`、`OpenAiCompatibleLlmClientTest`、`OpenAiCompatibleEmbeddingGeneratorTest`、`EncryptionServiceTest`；启用 `AIServiceImplTest.generateTransforms_parsesLlmResponse` |
+| 2026-05-21 | P1：`DataSourceServiceImplTest`（test/preview）、`PipelineServiceImplTest`（preview）、`AIServiceImplTest`（5 用例）、`VectorSimilarityUtilsTest`、`PermissionServiceImplTest`；Controller 鉴权 `ControllerTestAuthSupport` |
 
 ---
 

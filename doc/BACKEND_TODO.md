@@ -2,7 +2,7 @@
 
 > 基于 `doc/ARCHITECTURE_AND_API.md` 与当前 Java 源码对照梳理。  
 > **范围**：`dataflow-ai-*` 模块及数据库脚本；不含 `web/` 前端。  
-> **更新日期**：2026-05-20
+> **更新日期**：2026-05-21
 
 ---
 
@@ -11,7 +11,7 @@
 | 级别 | 含义 | 建议 |
 |------|------|------|
 | **P0** | 阻塞核心能力；无此功能则产品承诺的 AI/数据能力不可用或存在严重缺陷 | 立即排期 |
-| **P1** | 重要功能已暴露 API/架构，但实现为空或占位；影响主流程可用性 | 当前迭代 |
+| **P1** | 重要功能已暴露 API/架构，但实现为空或占位；影响主流程可用性 | 已完成（2026-05-21） |
 | **P2** | 架构已设计（表/接口/类存在），未接入或未闭环；影响安全、运维、协作 | 下一迭代 |
 | **P3** | 体验、一致性、测试与工程化；不阻塞单机演示 | 按需 |
 
@@ -73,17 +73,17 @@
 
 ---
 
-## P1 — 主流程 API 占位 / 闭环缺失
+## P1 — 主流程 API 占位 / 闭环缺失（已完成 2026-05-21）
 
 ### TODO-006 数据源连接测试（真实探测）
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `DataSourceServiceImpl.testConnection()` |
-| **现状** | 解密配置后直接 `return true` |
+| **状态** | ✅ 已完成 |
+| **位置** | `DataSourceServiceImpl.testConnection()`、`SourceReader.testConnection()` |
+| **实现** | 解密配置后按类型经 `SourceReaderFactory` 调用 JDBC / HTTP / Kafka / 文件等真实探测 |
 | **API** | `POST /v1/data-sources/{id}/test` |
-| **验收** | 按 `DataSourceType` 调用 JDBC / HTTP / Kafka Admin / 文件路径校验；失败返回 `false` 或结构化错误 |
+| **单测** | `DataSourceServiceImplTest` |
 
 ---
 
@@ -91,11 +91,11 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `DataSourceServiceImpl.previewSourceData()` |
-| **现状** | 返回空 `HashMap` |
+| **状态** | ✅ 已完成 |
+| **位置** | `DataSourceServiceImpl.previewSourceData()`、`RecordPreviewMapper` |
+| **实现** | `SourceReader.preview` 返回 `columns` / `rows` / `rowCount`（≤ sampleSize） |
 | **API** | `POST /v1/data-sources/{id}/preview` |
-| **验收** | 返回 columns + rows（≤ sampleSize）；可复用 `DatabaseSourceReader` / `ApiSourceReader` 逻辑 |
+| **单测** | `DataSourceServiceImplTest` |
 
 ---
 
@@ -103,11 +103,11 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `PipelineServiceImpl.previewTransform()` |
-| **现状** | 返回 `Map.of()` |
+| **状态** | ✅ 已完成 |
+| **位置** | `PipelinePreviewExecutor`、`PipelineServiceImpl.previewTransform()` |
+| **实现** | 源采样 → 执行 transforms（限流）→ 返回预览样本，不写 Sink |
 | **API** | `GET /v1/pipelines/{id}/preview` |
-| **验收** | 对源采样 → 执行 transforms（可限流）→ 返回样本行与字段 schema；不写入 Sink |
+| **单测** | `PipelineServiceImplTest` |
 
 ---
 
@@ -115,10 +115,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
+| **状态** | ✅ 已完成 |
 | **位置** | `GenerateTransformsResponse`、`AIServiceImpl` |
-| **现状** | 已持久化 `AiHelper` 但响应未带 id，客户端难以调用 `/v1/ai/feedback` |
-| **验收** | 响应增加 `aiHelperId`（或 `metadata` 内）；OpenAPI 文档同步 |
+| **实现** | 持久化 `AiHelper` 后响应体返回 `aiHelperId`，供 `/v1/ai/feedback` 关联 |
 
 ---
 
@@ -126,11 +125,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `AIServiceImpl.submitFeedback()`、`doc/db/init.sql` 中 `instruction_patterns` |
-| **现状** | 仅更新 `ai_helpers.user_feedback`；未写 `instruction_patterns`；`FeedbackRequest.pipelineId` 未落库 |
-| **影响** | `search-similar` 的 `useCount` / `acceptanceRate` 长期为占位值 |
-| **验收** | accept/modify 时 upsert 模式模板与 `avg_embedding`；reject 降低权重；`pipelineId` 关联 `ai_helpers.pipeline_id` |
+| **状态** | ✅ 已完成 |
+| **位置** | `InstructionPattern` / `InstructionPatternRepository`、`AIServiceImpl.submitFeedback()` |
+| **实现** | accept/modify upsert 模式与 embedding；reject 降权；`pipelineId` 写入 `ai_helpers` |
 
 ---
 
@@ -138,10 +135,10 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
+| **状态** | ✅ 已完成 |
 | **位置** | `AIServiceImpl.generateTransforms()` |
-| **现状** | 响应 `source.type` 固定 `llm_generated`；`instruction_patterns` 无 Entity/Repository |
-| **验收** | 相似度高于阈值时直接返回模板节点并标注 `historical_pattern`；否则再走 LLM |
+| **实现** | 先查 `instruction_patterns`；命中则 `source.type=historical_pattern` 并返回模板节点；否则走 LLM |
+| **配置** | `app.ai.historical-pattern-min-similarity`（默认 0.85） |
 
 ---
 
@@ -149,10 +146,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `AIServiceImpl.searchSimilar()`（TODO 注释） |
-| **现状** | `useCount=0`、`acceptanceRate=0.8` 写死 |
-| **验收** | 来自 `instruction_patterns` 或聚合 `ai_helpers` |
+| **状态** | ✅ 已完成 |
+| **位置** | `AIServiceImpl.searchSimilar()` |
+| **实现** | `useCount` / `acceptanceRate` 来自 `instruction_patterns` 或 `ai_helpers` 反馈聚合 |
 
 ---
 
@@ -160,10 +156,10 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 需评审 |
-| **位置** | `AiHelperJpaRepository.searchByEmbedding`、`SearchSimilarRequest.minSimilarity` |
-| **现状** | SQL 使用 pgvector 运算符 `<=>`（余弦**距离**），参数名却为 `minSimilarity`（相似度）；二者不等价 |
-| **验收** | 统一为距离上限或 `1 - similarity`；文档与单测覆盖边界 case |
+| **状态** | ✅ 已完成 |
+| **位置** | `VectorSimilarityUtils`、`AiHelperJpaRepository.searchByEmbedding` |
+| **实现** | `minSimilarity` → `maxCosineDistance = 1 - similarity` 再传入 SQL `<=>` |
+| **单测** | `VectorSimilarityUtilsTest` |
 
 ---
 
@@ -171,11 +167,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `AiAssistedProcessor.callAiService()` |
-| **现状** | 调用 `aiService.generateTransforms` 后 **`return null`**；响应解析代码块被注释 |
-| **影响** | 配置了 AI_ASSISTED 的 Pipeline 执行无实际输出 |
-| **验收** | 按行/批调用 LLM 或批量接口；结果写入 `outputField`；依赖 TODO-001/002 |
+| **状态** | ✅ 已完成 |
+| **位置** | `AiAssistedProcessor` |
+| **实现** | `LLMClient.complete` + `RowTransformPromptBuilder`；解析 JSON 写入 `outputField` |
 
 ---
 
@@ -183,10 +177,10 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现（`PermissionServiceImpl` 存在但未使用） |
-| **位置** | 各 `*Controller`、`PermissionService` |
-| **现状** | 任意登录用户可 `GET/PUT/DELETE` 他人数据源、Pipeline（仅列表按用户过滤） |
-| **验收** | Pipeline 的读/改/删/执行调用 `canModifyPipeline` / `canExecutePipeline` 等；数据源限制 `createdBy` 或 ADMIN |
+| **状态** | ✅ 已完成 |
+| **位置** | `DataSourceController`、`PipelineController`、`ExecutionController`、`ResourceAuthorizationHelper` |
+| **实现** | 读/改/删/执行前校验 `PermissionService`；数据源按 `createdBy`/ADMIN；Pipeline 按 owner/权限 |
+| **单测** | `PermissionServiceImplTest`；Controller 测试经 `ControllerTestAuthSupport` Mock 鉴权 |
 
 ---
 
@@ -461,16 +455,20 @@
 | 优先级 | 数量 | 代表项 |
 |--------|------|--------|
 | P0 | 0（已完成 5 项） | — |
-| P1 | 10 | 数据源测试/预览、Pipeline 预览、AI 闭环、鉴权、AI_ASSISTED |
+| P1 | 0（已完成 10 项） | — |
 | P2 | 16 | 权限引擎、调度、审计、异常、分页、Flyway、分布式取消 |
 | P3 | 9 | 配置修正、测试、重试、并行 DAG、工程清理 |
-| **合计** | **35** | P0 五项已移入「已完成」 |
+| **合计** | **25** 待办 | P0+P1 共 15 项已完成 |
 
 ---
 
 ## 已完成（P0，2026-05-20）
 
 - TODO-001～005：见上文 P0 各节（含通义千问 `qianwen` 默认提供商）
+
+## 已完成（P1，2026-05-21）
+
+- TODO-006～015：见上文 P1 各节（数据源测试/预览、Pipeline 预览、AI 闭环与向量阈值、`AI_ASSISTED`、Controller 资源鉴权）
 
 ---
 
@@ -510,7 +508,7 @@ gantt
 - Pipeline CRUD、异步执行、`PipelineOrchestrator` 三阶段
 - 多数 Transform 处理器（FIELD_MAPPER、FILTER、AGGREGATE 等）
 - Database / API / Kafka / CSV 的 SourceReader、部分 SinkWriter
-- `ai_helpers` pgvector 检索 SQL（阈值语义见 TODO-013）
+- `ai_helpers` pgvector 检索 SQL（阈值经 `VectorSimilarityUtils` 校正）
 - Knife4j / Actuator health
 - `ExecutionService` 取消（单机）、执行统计
 

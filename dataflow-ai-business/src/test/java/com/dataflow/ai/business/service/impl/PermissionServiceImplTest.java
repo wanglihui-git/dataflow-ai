@@ -1,5 +1,6 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
@@ -47,6 +48,22 @@ class PermissionServiceImplTest {
         User user = User.builder().id("u1").role(UserRole.DEVELOPER).build();
 
         assertFalse(permissionService.hasPipelineAccess(pipeline, user));
+    }
+
+    @Test
+    @DisplayName("canAccessDataSource - 创建者可访问")
+    void canAccessDataSource_owner() {
+        DataSource ds = DataSource.builder().createdBy("u1").build();
+        User user = User.builder().id("u1").role(UserRole.VIEWER).build();
+        assertTrue(permissionService.canAccessDataSource(ds, user));
+    }
+
+    @Test
+    @DisplayName("canAccessDataSource - 非创建者拒绝")
+    void canAccessDataSource_denied() {
+        DataSource ds = DataSource.builder().createdBy("owner").build();
+        User user = User.builder().id("u1").role(UserRole.DEVELOPER).build();
+        assertFalse(permissionService.canAccessDataSource(ds, user));
     }
 
     @Test

@@ -23,6 +23,11 @@ public class GenerateTransformsRequest {
     private String instruction;
 
     /**
+     * 关联 Pipeline ID（可选）
+     */
+    private String pipelineId;
+
+    /**
      * 上下文信息
      */
     private Context context;

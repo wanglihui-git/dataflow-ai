@@ -2,6 +2,7 @@ package com.dataflow.ai.business.repository.impl;
 
 import com.dataflow.ai.business.repository.AiHelperRepository;
 import com.dataflow.ai.business.repository.jpa.AiHelperJpaRepository;
+import com.dataflow.ai.business.util.VectorSimilarityUtils;
 import com.dataflow.ai.domain.entity.AiHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,9 +45,9 @@ public class AiHelperRepositoryImpl implements AiHelperRepository {
     }
 
     @Override
-    public List<AiHelper> searchByEmbedding(float[] embedding, double threshold, int limit) {
+    public List<AiHelper> searchByEmbedding(float[] embedding, double maxCosineDistance, int limit) {
         String vectorLiteral = toVectorLiteral(embedding);
-        return jpaRepository.searchByEmbedding(vectorLiteral, threshold, limit);
+        return jpaRepository.searchByEmbedding(vectorLiteral, maxCosineDistance, limit);
     }
 
     @Override

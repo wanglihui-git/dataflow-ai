@@ -52,12 +52,15 @@ public class QianwenLlmClient implements LLMClient {
 
     @Override
     public String generateTransforms(String prompt, Map<String, Object> context) {
+        return complete(LlmPromptBuilder.SYSTEM_PROMPT, LlmPromptBuilder.buildUserMessage(prompt, context), context);
+    }
+
+    @Override
+    public String complete(String systemPrompt, String userPrompt, Map<String, Object> context) {
         if (apiKey.isBlank()) {
             throw new LlmApiException("Qianwen API key is not configured");
         }
-        ObjectNode body = buildRequestBody(
-                LlmPromptBuilder.SYSTEM_PROMPT,
-                LlmPromptBuilder.buildUserMessage(prompt, context));
+        ObjectNode body = buildRequestBody(systemPrompt, userPrompt);
         return postAndExtractContent(body);
     }
 
