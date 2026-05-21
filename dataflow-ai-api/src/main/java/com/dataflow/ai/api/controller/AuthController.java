@@ -1,6 +1,7 @@
 package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.domain.request.LoginRequest;
+import com.dataflow.ai.domain.request.RefreshTokenRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.response.ApiResponse;
@@ -28,6 +29,13 @@ public class AuthController {
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("Login request: username={}", request.getUsername());
         LoginResponse response = userService.login(request);
+        return ApiResponse.ofSuccess(response);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "刷新访问令牌")
+    public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        LoginResponse response = userService.refreshToken(request.getRefreshToken());
         return ApiResponse.ofSuccess(response);
     }
 

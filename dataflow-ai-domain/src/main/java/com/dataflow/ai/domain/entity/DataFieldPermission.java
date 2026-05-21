@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "data_field_permissions")
+@Table(name = "data_column_permissions")
 public class DataFieldPermission {
 
     /**

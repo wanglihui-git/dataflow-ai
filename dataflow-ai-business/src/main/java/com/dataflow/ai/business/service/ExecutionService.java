@@ -4,6 +4,9 @@ import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.entity.Pipeline;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,4 +60,19 @@ public interface ExecutionService {
      * 获取执行统计信息
      */
     Map<String, Object> getExecutionStats(String pipelineId);
+
+    /**
+     * 按状态分页查询执行记录
+     */
+    Page<ExecutionRun> findByStatus(ExecutionStatus status, Pageable pageable);
+
+    /**
+     * 持久化执行日志条目
+     */
+    void appendExecutionLog(String runId, String phase, String message);
+
+    /**
+     * 是否已请求取消（DB 标志）
+     */
+    boolean isCancelRequested(String runId);
 }

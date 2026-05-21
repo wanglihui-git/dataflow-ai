@@ -90,26 +90,20 @@ public class Pipeline {
     @Enumerated(EnumType.STRING)
     private PermissionLevel permissionLevel;
 
-    /**
-     * 允许的角色
-     */
-//    @Convert(converter = StringListConverter.class)
-//    @Column(columnDefinition = "jsonb")
-//    private List<String> allowedRoles;
+    @Convert(converter = StringListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> allowedRoles;
 
-    /**
-     * 允许的用户
-     */
-//    @Convert(converter = StringListConverter.class)
-//    @Column(columnDefinition = "jsonb")
-//    private List<String> allowedUsers;
+    @Convert(converter = StringListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> allowedUsers;
 
-    /**
-     * 允许的部门
-     */
-//    @Convert(converter = StringListConverter.class)
-//    @Column(columnDefinition = "jsonb")
-//    private List<String> allowedDepartments;
+    @Convert(converter = StringListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> allowedDepartments;
 
     /**
      * 状态

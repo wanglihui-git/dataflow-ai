@@ -6,6 +6,8 @@ import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,5 +77,19 @@ public class ExecutionRunRepositoryImpl implements ExecutionRunRepository {
     @Override
     public long countByPipelineIdAndStatus(String pipelineId, ExecutionStatus status) {
         return jpaRepository.countByPipelineIdAndStatus(pipelineId, status);
+    }
+
+    @Override
+    public Page<ExecutionRun> findByStatus(ExecutionStatus status, Pageable pageable) {
+        return jpaRepository.findByStatus(status, pageable);
+    }
+
+    @Override
+    @Transactional
+    public void markCancelRequested(String runId) {
+        jpaRepository.findById(runId).ifPresent(run -> {
+            run.setCancelRequested(true);
+            jpaRepository.save(run);
+        });
     }
 }

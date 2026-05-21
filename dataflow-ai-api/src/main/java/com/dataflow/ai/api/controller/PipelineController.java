@@ -10,6 +10,8 @@ import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import com.dataflow.ai.domain.response.ApiResponse;
+import com.dataflow.ai.domain.response.PageResponse;
+import org.springframework.data.domain.PageRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,12 +47,13 @@ public class PipelineController {
 
     @GetMapping
     @Operation(summary = "查询Pipeline列表")
-    public ApiResponse<List<Pipeline>> list(
+    public ApiResponse<PageResponse<Pipeline>> list(
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         String userId = SecurityUtils.getCurrentUserId();
-        List<Pipeline> pipelines = pipelineService.findByUser(userId);
+        PageResponse<Pipeline> pipelines = pipelineService.findByUserPage(
+                userId, name, PageRequest.of(page, size));
         return ApiResponse.ofSuccess(pipelines);
     }
 

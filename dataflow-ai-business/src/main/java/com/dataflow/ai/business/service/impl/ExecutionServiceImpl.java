@@ -5,12 +5,15 @@ import com.dataflow.ai.business.engine.orchestrator.ExecutionResult;
 import com.dataflow.ai.business.engine.orchestrator.PipelineOrchestrator;
 import com.dataflow.ai.business.repository.ExecutionRunRepository;
 import com.dataflow.ai.business.service.ExecutionService;
+import com.dataflow.ai.business.util.ExecutionLogAppender;
 import com.dataflow.ai.domain.entity.ExecutionRun;
-import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.entity.Pipeline;
+import com.dataflow.ai.domain.enums.ExecutionStatus;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -22,9 +25,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * 执行服务实现
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,10 +36,7 @@ public class ExecutionServiceImpl implements ExecutionService {
     @Resource
     private PipelineOrchestrator pipelineOrchestrator;
 
-    // 存储正在运行的执行任务（用于取消）
     private final Map<String, ExecutionContext> runningContexts = new ConcurrentHashMap<>();
-
-    // 存储取消标志
     private final Map<String, AtomicBoolean> cancelledFlags = new ConcurrentHashMap<>();
 
     @Override
@@ -50,6 +47,7 @@ public class ExecutionServiceImpl implements ExecutionService {
                 .status(ExecutionStatus.PENDING)
                 .startTime(LocalDateTime.now())
                 .triggeredBy(triggeredBy)
+                .cancelRequested(false)
                 .createdAt(LocalDateTime.now())
                 .build();
         return executionRunRepository.save(run);
@@ -58,22 +56,19 @@ public class ExecutionServiceImpl implements ExecutionService {
     @Override
     @Async
     public void startExecution(String runId, Pipeline pipeline) {
-        // 获取执行记录
         Optional<ExecutionRun> executionRunOpt = executionRunRepository.findById(runId);
         if (executionRunOpt.isEmpty()) {
             log.error("Execution run not found: runId={}", runId);
             return;
         }
 
-        // 创建取消标志
         AtomicBoolean cancelledFlag = new AtomicBoolean(false);
         cancelledFlags.put(runId, cancelledFlag);
 
         try {
             updateExecutionStatus(runId, ExecutionStatus.RUNNING);
-            log.info("Starting pipeline execution: runId={}, pipelineName={}", runId, pipeline.getName());
+            appendExecutionLog(runId, "INIT", "Pipeline execution started: " + pipeline.getName());
 
-            // 创建执行上下文
             ExecutionContext context = ExecutionContext.builder()
                     .runId(runId)
                     .pipeline(pipeline)
@@ -82,76 +77,75 @@ public class ExecutionServiceImpl implements ExecutionService {
                     .startTime(LocalDateTime.now())
                     .build();
 
-            // 存储上下文用于取消操作
             runningContexts.put(runId, context);
 
-            // 使用PipelineOrchestrator执行Pipeline
             ExecutionResult result = pipelineOrchestrator.execute(context);
 
-            // 检查是否被取消
-            if (cancelledFlag.get()) {
+            refreshCancelFlag(runId, cancelledFlag);
+
+            if (cancelledFlag.get() || isCancelRequested(runId)) {
                 updateExecutionResult(runId, ExecutionStatus.CANCELLED, "Execution was cancelled", result.getMetrics());
                 log.info("Pipeline execution cancelled: runId={}", runId);
             } else {
-                // 更新执行结果
                 updateExecutionResult(runId, result.getStatus(), result.getErrorMessage(), result.buildFullMetrics());
-                log.info("Pipeline execution completed: runId={}, status={}, recordsProcessed={}, durationMs={}",
-                        runId, result.getStatus(), result.getRecordsProcessed(), result.getDurationMs());
+                appendExecutionLog(runId, "COMPLETE", "Status: " + result.getStatus());
+                log.info("Pipeline execution completed: runId={}, status={}", runId, result.getStatus());
             }
 
         } catch (Exception e) {
             updateExecutionResult(runId, ExecutionStatus.FAILED, e.getMessage(), null);
-            log.error("Pipeline execution failed: runId={}, error={}", runId, e.getMessage(), e);
+            appendExecutionLog(runId, "ERROR", e.getMessage());
+            log.error("Pipeline execution failed: runId={}", runId, e);
         } finally {
-            // 清理资源
             runningContexts.remove(runId);
             cancelledFlags.remove(runId);
         }
     }
 
+    private void refreshCancelFlag(String runId, AtomicBoolean cancelledFlag) {
+        if (isCancelRequested(runId)) {
+            cancelledFlag.set(true);
+            ExecutionContext ctx = runningContexts.get(runId);
+            if (ctx != null) {
+                ctx.markCancelled();
+            }
+        }
+    }
+
     @Override
     public void updateExecutionStatus(String runId, ExecutionStatus status) {
-        Optional<ExecutionRun> runOpt = executionRunRepository.findById(runId);
-        if (runOpt.isEmpty()) {
-            log.warn("Execution run not found: {}", runId);
-            return;
-        }
-        ExecutionRun run = runOpt.get();
-        run.setStatus(status);
-        executionRunRepository.save(run);
+        executionRunRepository.findById(runId).ifPresent(run -> {
+            run.setStatus(status);
+            executionRunRepository.save(run);
+        });
     }
 
     @Override
     public void updateExecutionResult(String runId, ExecutionStatus status, String errorMessage, Map<String, Object> metrics) {
-        Optional<ExecutionRun> runOpt = executionRunRepository.findById(runId);
-        if (runOpt.isEmpty()) {
-            log.warn("Execution run not found: {}", runId);
-            return;
-        }
-        ExecutionRun run = runOpt.get();
-        run.setStatus(status);
-        run.setEndTime(LocalDateTime.now());
-        run.setErrorMessage(errorMessage);
-        run.setMetrics(metrics);
-        executionRunRepository.save(run);
+        executionRunRepository.findById(runId).ifPresent(run -> {
+            run.setStatus(status);
+            run.setEndTime(LocalDateTime.now());
+            run.setErrorMessage(errorMessage);
+            if (metrics != null) {
+                run.setMetrics(metrics);
+            }
+            executionRunRepository.save(run);
+        });
     }
 
     @Override
     public void cancelExecution(String runId) {
-        // 设置取消标志
         AtomicBoolean cancelledFlag = cancelledFlags.get(runId);
         if (cancelledFlag != null) {
             cancelledFlag.set(true);
         }
-
-        // 标记执行上下文为已取消
         ExecutionContext context = runningContexts.get(runId);
         if (context != null) {
             context.markCancelled();
         }
-
+        executionRunRepository.markCancelRequested(runId);
         updateExecutionStatus(runId, ExecutionStatus.CANCELLED);
-        log.info("Pipeline execution cancelled: runId={}", runId);
+        log.info("Pipeline execution cancel requested: runId={}", runId);
     }
 
     @Override
@@ -166,7 +160,27 @@ public class ExecutionServiceImpl implements ExecutionService {
 
     @Override
     public List<ExecutionRun> findRunningExecutions() {
-        return executionRunRepository.findByPipelineIdAndStatus("", ExecutionStatus.RUNNING);
+        return executionRunRepository.findByStatus(ExecutionStatus.RUNNING, Pageable.unpaged()).getContent();
+    }
+
+    @Override
+    public Page<ExecutionRun> findByStatus(ExecutionStatus status, Pageable pageable) {
+        return executionRunRepository.findByStatus(status, pageable);
+    }
+
+    @Override
+    public void appendExecutionLog(String runId, String phase, String message) {
+        executionRunRepository.findById(runId).ifPresent(run -> {
+            ExecutionLogAppender.append(run, phase, message);
+            executionRunRepository.save(run);
+        });
+    }
+
+    @Override
+    public boolean isCancelRequested(String runId) {
+        return executionRunRepository.findById(runId)
+                .map(r -> Boolean.TRUE.equals(r.getCancelRequested()))
+                .orElse(false);
     }
 
     @Override

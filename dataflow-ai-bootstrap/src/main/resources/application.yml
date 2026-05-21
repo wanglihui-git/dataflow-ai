@@ -19,6 +19,12 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -121,6 +127,9 @@ app:
   permission:
     enabled: ${PERMISSION_ENABLED:true}
     default-mask-type: ${DEFAULT_MASK_TYPE:PARTIAL}
+
+  schedule:
+    poll-interval-ms: ${SCHEDULE_POLL_MS:60000}
 
   # 异步配置
   async:

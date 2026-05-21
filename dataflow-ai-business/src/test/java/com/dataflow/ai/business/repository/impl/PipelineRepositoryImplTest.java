@@ -22,11 +22,19 @@ class PipelineRepositoryImplTest {
     private PipelineRepositoryImpl pipelineRepository;
 
     @Test
-    @DisplayName("findByUser - 委托原生 SQL 查询")
-    void findByUser_delegates() {
-        pipelineRepository.findByUser("user-001");
+    @DisplayName("findByUser - 合并 owner/public/shared")
+    void findByUser_mergesAccessible() {
+        org.mockito.Mockito.when(jpaRepository.findByOwnerId("user-001")).thenReturn(java.util.List.of());
+        org.mockito.Mockito.when(jpaRepository.findByPermissionLevel(Pipeline.PermissionLevel.PUBLIC))
+                .thenReturn(java.util.List.of());
+        org.mockito.Mockito.when(jpaRepository.findByPermissionLevel(Pipeline.PermissionLevel.SHARED))
+                .thenReturn(java.util.List.of());
 
-        verify(jpaRepository).findAccessibleByUserId("user-001");
+        pipelineRepository.findByUser("user-001", "DEVELOPER", "eng");
+
+        verify(jpaRepository).findByOwnerId("user-001");
+        verify(jpaRepository).findByPermissionLevel(Pipeline.PermissionLevel.PUBLIC);
+        verify(jpaRepository).findByPermissionLevel(Pipeline.PermissionLevel.SHARED);
     }
 
     @Test

@@ -75,6 +75,12 @@ public class ExecutionRun {
     private String triggeredBy;
 
     /**
+     * 是否请求取消（跨实例可见）
+     */
+    @Column(name = "cancel_requested")
+    private Boolean cancelRequested;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

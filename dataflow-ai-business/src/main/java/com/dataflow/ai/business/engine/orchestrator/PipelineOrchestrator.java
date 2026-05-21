@@ -1,6 +1,8 @@
 package com.dataflow.ai.business.engine.orchestrator;
 
 import com.dataflow.ai.business.engine.dag.DagExecutor;
+import com.dataflow.ai.business.engine.util.TransformDagSupport;
+import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.business.engine.exception.ExecutionException;
 import com.dataflow.ai.business.engine.metrics.ExecutionMetricsCollector;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
@@ -19,6 +21,7 @@ import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.domain.vo.Transform;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -48,6 +51,10 @@ public class PipelineOrchestrator {
     @Resource
     private ExecutionMetricsCollector metricsCollector;
 
+    @Resource
+    @Lazy
+    private ExecutionService executionService;
+
     /**
      * 默认批次大小
      */
@@ -68,6 +75,7 @@ public class PipelineOrchestrator {
 
             // 初始化指标收集
             metricsCollector.initialize(context);
+            executionService.appendExecutionLog(context.getRunId(), "INIT", "Execution started");
 
             // Phase 1: 读取源数据
             List<Record> allRecords = executeSourcePhase(context, result);
@@ -194,10 +202,12 @@ public class PipelineOrchestrator {
         // 应用转换
         List<Record> transformedRecords = new ArrayList<>(inputRecords);
         for (Transform transform : sortedTransforms) {
-            if (context.isCancelled()) {
+            if (context.isCancelled() || executionService.isCancelRequested(context.getRunId())) {
+                context.markCancelled();
                 break;
             }
 
+            TransformDagSupport.prepareJoinRightData(transform, context.getSharedState());
             TransformProcessor processor = transformProcessorFactory.createProcessor(transform.getType());
             TransformContext transformContext = TransformContext.builder()
                     .transform(transform)
@@ -241,6 +251,9 @@ public class PipelineOrchestrator {
                 batchNumber++;
             }
 
+            TransformDagSupport.saveNodeOutput(context.getSharedState(), transform.getNodeId(), transformedRecords);
+            executionService.appendExecutionLog(context.getRunId(), "TRANSFORM",
+                    "Completed node " + transform.getNodeId() + " type=" + transform.getType());
             log.debug("Transform completed: nodeId={}, type={}, recordsProcessed={}",
                     transform.getNodeId(), transform.getType(), transformedRecords.size());
         }

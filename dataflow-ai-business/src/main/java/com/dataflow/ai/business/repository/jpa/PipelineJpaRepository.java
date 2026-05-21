@@ -24,10 +24,4 @@ public interface PipelineJpaRepository extends JpaRepository<Pipeline, String> {
      * 2. Pipeline 为 PUBLIC
      * 3. 用户在 allowed_users 列表中（JSONB 数组包含查询）
      */
-    @Query(value = """
-            SELECT * FROM pipelines
-            WHERE owner_id = ?1
-               OR permission_level = 'PUBLIC'
-            """, nativeQuery = true)
-    List<Pipeline> findAccessibleByUserId(String userId);
 }

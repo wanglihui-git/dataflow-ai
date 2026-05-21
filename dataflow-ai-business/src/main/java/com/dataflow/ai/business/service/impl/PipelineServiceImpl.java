@@ -4,6 +4,9 @@ import com.dataflow.ai.business.engine.preview.PipelinePreviewExecutor;
 import com.dataflow.ai.business.repository.PipelineRepository;
 import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.business.service.PipelineService;
+import com.dataflow.ai.business.service.UserService;
+import com.dataflow.ai.domain.response.PageResponse;
+import org.springframework.data.domain.Page;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
@@ -35,6 +38,9 @@ public class PipelineServiceImpl implements PipelineService {
     @Resource
     private PipelinePreviewExecutor pipelinePreviewExecutor;
 
+    @Resource
+    private UserService userService;
+
     @Override
     public Optional<Pipeline> findById(String id) {
         return pipelineRepository.findById(id);
@@ -47,7 +53,20 @@ public class PipelineServiceImpl implements PipelineService {
 
     @Override
     public List<Pipeline> findByUser(String userId) {
-        return pipelineRepository.findByUser(userId);
+        return userService.findById(userId)
+                .map(u -> pipelineRepository.findByUser(userId, u.getRole().name(), u.getDepartment()))
+                .orElse(List.of());
+    }
+
+    @Override
+    public PageResponse<Pipeline> findByUserPage(String userId, String name, org.springframework.data.domain.Pageable pageable) {
+        return userService.findById(userId)
+                .map(u -> {
+                    Page<Pipeline> page = pipelineRepository.findAccessiblePage(
+                            userId, u.getRole().name(), u.getDepartment(), name, pageable);
+                    return PageResponse.of(page.getContent(), page.getNumber(), page.getSize(), page.getTotalElements());
+                })
+                .orElse(PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
     }
 
     @Override
@@ -61,7 +80,10 @@ public class PipelineServiceImpl implements PipelineService {
                 .sink(request.getSink())
                 .schedule(request.getSchedule())
                 .ownerId(ownerId)
-                .permissionLevel(Pipeline.PermissionLevel.PUBLIC)
+                .permissionLevel(resolvePermissionLevel(request.getPermissionLevel()))
+                .allowedRoles(request.getAllowedRoles())
+                .allowedUsers(request.getAllowedUsers())
+                .allowedDepartments(request.getAllowedDepartments())
                 .status("active")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -131,5 +153,16 @@ public class PipelineServiceImpl implements PipelineService {
         pipeline.setStatus(status);
         pipeline.setUpdatedAt(LocalDateTime.now());
         pipelineRepository.save(pipeline);
+    }
+
+    private Pipeline.PermissionLevel resolvePermissionLevel(String level) {
+        if (level == null || level.isBlank()) {
+            return Pipeline.PermissionLevel.PRIVATE;
+        }
+        try {
+            return Pipeline.PermissionLevel.valueOf(level.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Pipeline.PermissionLevel.PRIVATE;
+        }
     }
 }

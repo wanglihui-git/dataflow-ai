@@ -5,22 +5,25 @@ import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.business.service.PermissionService;
 import com.dataflow.ai.business.service.PipelineService;
 import com.dataflow.ai.business.service.UserService;
+import com.dataflow.ai.business.util.ExecutionLogAppender;
 import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
+import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.response.ApiResponse;
+import com.dataflow.ai.domain.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
-/**
- * 执行控制器
- */
 @Slf4j
 @RestController
 @RequestMapping("/v1/execution")
@@ -33,6 +36,18 @@ public class ExecutionController {
     private final UserService userService;
     private final PermissionService permissionService;
 
+    @GetMapping("/runs")
+    @Operation(summary = "分页查询执行记录")
+    public ApiResponse<PageResponse<ExecutionRun>> listRuns(
+            @RequestParam(required = false) ExecutionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        ExecutionStatus filter = status != null ? status : ExecutionStatus.RUNNING;
+        Page<ExecutionRun> result = executionService.findByStatus(filter, PageRequest.of(page, size));
+        return ApiResponse.ofSuccess(PageResponse.of(
+                result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements()));
+    }
+
     @GetMapping("/runs/{runId}")
     @Operation(summary = "查询执行记录详情")
     public ApiResponse<ExecutionRun> getRun(@PathVariable String runId) {
@@ -43,6 +58,18 @@ public class ExecutionController {
                 .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
         ResourceAuthorizationHelper.requirePipelineAccess(pipeline, user, permissionService);
         return ApiResponse.ofSuccess(run);
+    }
+
+    @GetMapping("/runs/{runId}/logs")
+    @Operation(summary = "查询执行日志")
+    public ApiResponse<List<Map<String, Object>>> getRunLogs(@PathVariable String runId) {
+        ExecutionRun run = executionService.findById(runId)
+                .orElseThrow(() -> new RuntimeException("执行记录不存在"));
+        User user = requireCurrentUser();
+        Pipeline pipeline = pipelineService.findById(run.getPipelineId())
+                .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
+        ResourceAuthorizationHelper.requirePipelineAccess(pipeline, user, permissionService);
+        return ApiResponse.ofSuccess(ExecutionLogAppender.getEntries(run));
     }
 
     @PostMapping("/runs/{runId}/cancel")
@@ -65,8 +92,7 @@ public class ExecutionController {
         Pipeline pipeline = pipelineService.findById(pipelineId)
                 .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
         ResourceAuthorizationHelper.requirePipelineAccess(pipeline, user, permissionService);
-        Map<String, Object> stats = executionService.getExecutionStats(pipelineId);
-        return ApiResponse.ofSuccess(stats);
+        return ApiResponse.ofSuccess(executionService.getExecutionStats(pipelineId));
     }
 
     private User requireCurrentUser() {

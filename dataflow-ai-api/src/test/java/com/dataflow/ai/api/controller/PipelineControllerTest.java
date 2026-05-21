@@ -8,6 +8,7 @@ import com.dataflow.ai.business.service.PipelineService;
 import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
+import com.dataflow.ai.domain.response.PageResponse;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,11 +89,12 @@ class PipelineControllerTest {
     @Test
     @DisplayName("GET /v1/pipelines - 列表")
     void list_success() throws Exception {
-        when(pipelineService.findByUser("user-001")).thenReturn(List.of(pipeline));
+        when(pipelineService.findByUserPage(eq("user-001"), any(), any()))
+                .thenReturn(PageResponse.of(List.of(pipeline), 0, 20, 1));
 
         mockMvc.perform(get("/v1/pipelines"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)));
+                .andExpect(jsonPath("$.data.content", hasSize(1)));
     }
 
     @Test

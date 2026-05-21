@@ -12,6 +12,9 @@ public enum ResponseCode {
     // client fail
     CODE_400(400, "Invalid Argument"),
     CODE_401(401, "Not Authorized"),
+    CODE_403(403, "Forbidden"),
+    CODE_404(404, "Not Found"),
+    CODE_409(409, "Conflict"),
 
     // server fali
     CODE_500(FAILURE.code, FAILURE.getMsg()),

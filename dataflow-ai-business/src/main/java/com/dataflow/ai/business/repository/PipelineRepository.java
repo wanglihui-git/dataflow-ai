@@ -2,6 +2,9 @@ package com.dataflow.ai.business.repository;
 
 import com.dataflow.ai.domain.entity.Pipeline;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +31,12 @@ public interface PipelineRepository {
     /**
      * 查询用户有权限访问的Pipeline
      */
-    List<Pipeline> findByUser(String userId);
+    List<Pipeline> findByUser(String userId, String role, String department);
+
+    /**
+     * 分页查询用户可访问的 Pipeline（可选名称筛选）
+     */
+    Page<Pipeline> findAccessiblePage(String userId, String role, String department, String name, Pageable pageable);
 
     /**
      * 查询所有Pipeline

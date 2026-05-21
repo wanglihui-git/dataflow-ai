@@ -2,7 +2,7 @@
 
 > 基于 `doc/ARCHITECTURE_AND_API.md` 与当前 Java 源码对照梳理。  
 > **范围**：`dataflow-ai-*` 模块及数据库脚本；不含 `web/` 前端。  
-> **更新日期**：2026-05-21
+> **更新日期**：2026-05-21（P2 完成）
 
 ---
 
@@ -12,7 +12,7 @@
 |------|------|------|
 | **P0** | 阻塞核心能力；无此功能则产品承诺的 AI/数据能力不可用或存在严重缺陷 | 立即排期 |
 | **P1** | 重要功能已暴露 API/架构，但实现为空或占位；影响主流程可用性 | 已完成（2026-05-21） |
-| **P2** | 架构已设计（表/接口/类存在），未接入或未闭环；影响安全、运维、协作 | 下一迭代 |
+| **P2** | 架构已设计（表/接口/类存在），未接入或未闭环；影响安全、运维、协作 | 已完成（2026-05-21） |
 | **P3** | 体验、一致性、测试与工程化；不阻塞单机演示 | 按需 |
 
 **状态**：`未开始` | `部分实现` | `仅骨架`
@@ -184,176 +184,122 @@
 
 ---
 
-## P2 — 架构已设计、未闭环
+## P2 — 架构已设计、未闭环（已完成 2026-05-21）
 
 ### TODO-016 `PermissionEngine` 实现与执行链集成
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 仅骨架（interface） |
-| **位置** | `permission/PermissionEngine.java` |
-| **关联** | `DataFieldPermission`、`FieldPermissionRepository`（已有 CRUD 仓储） |
-| **现状** | 预览/执行读数**未脱敏**；`app.permission.enabled` 配置未读取 |
-| **验收** | 实现类在 `SourceReader`/`preview` 出口调用 `applyPermissions`；支持 `AccessType` 与 `maskRule` |
+| **状态** | ✅ 已完成 |
+| **实现** | `PermissionEngineImpl`、`DefaultMaskProcessor`；读取 `app.permission.enabled`；`DataSourceServiceImpl.preview` 出口脱敏 |
+| **表名** | 实体映射 `data_column_permissions`（与 init.sql 一致） |
 
----
-
-### TODO-017 行级权限（`data_row_permissions`）
+### TODO-017 行级权限
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | DB 有表；**无** JPA Entity / Repository |
-| **验收** | 实体 + 仓储；SQL/表达式 `filter_condition` 注入查询（与列级权限协同） |
+| **状态** | ✅ 已完成 |
+| **实现** | `DataRowPermission` + `RowPermissionRepository`；`RowFilterEvaluator`（`field=value`） |
 
----
-
-### TODO-018 字段/行权限管理 REST API
+### TODO-018 字段/行权限 REST API
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | 无 Controller |
-| **现状** | 仅能手工写库配置权限 |
-| **验收** | CRUD：`/v1/data-sources/{id}/column-permissions`、`row-permissions`（路径可再定） |
+| **状态** | ✅ 已完成 |
+| **API** | `DataPermissionController`：`column-permissions` / `row-permissions` CRUD |
 
----
-
-### TODO-019 审计日志写入与查询 API
+### TODO-019 审计日志
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `AuditLogServiceImpl`（可用）、`AuditLog` 实体；**无** Controller、**无** AOP/拦截调用 |
-| **验收** | 登录、数据源/Pipeline CRUD、执行启停写审计；`GET /v1/audit-logs` 分页查询；记录 ip/userAgent |
+| **状态** | ✅ 已完成 |
+| **实现** | `AuditAspect`（登录/数据源创建/Pipeline 创建与执行）；`AuditLogController` 分页查询；记录 ip/userAgent |
 
----
-
-### TODO-020 全局异常处理与业务错误码
+### TODO-020 全局异常处理
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 仅骨架 |
-| **位置** | `GlobalExceptionHandler.java`（空类） |
-| **现状** | 大量 `RuntimeException` → HTTP 500；`ApiResponse` 与 Spring 错误格式混用 |
-| **验收** | `@RestControllerAdvice` 映射 400/401/404/409；定义 `BusinessException` + `ResponseCode` |
+| **状态** | ✅ 已完成 |
+| **实现** | `api/exception/GlobalExceptionHandler`；`ResponseCode` 403/404/409；`ResourceAuthorizationHelper` 使用 `BusinessException` |
 
----
-
-### TODO-021 Pipeline 定时调度执行
+### TODO-021 Pipeline 定时调度
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `ScheduleConfig` 仅存 JSONB；无 `@Scheduled` / Quartz |
-| **现状** | `MANUAL` 外类型（CRON、FIXED_RATE 等）不会触发执行 |
-| **验收** | 调度器读取 active Pipeline 的 schedule；触发 `executePipeline`；集群需分布式锁 |
+| **状态** | ✅ 已完成（单机轮询） |
+| **实现** | `PipelineScheduleRunner`（CRON / FIXED_RATE / FIXED_DELAY）；`@EnableScheduling` |
+| **说明** | 多实例分布式锁待 P3 或运维层补充 |
 
----
-
-### TODO-022 Pipeline 权限模型补全
+### TODO-022 Pipeline 权限模型
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `Pipeline.java`（`allowedRoles/Users/Departments` 注释）、`PipelineServiceImpl.createPipeline()` |
-| **现状** | 创建时**强制** `permissionLevel=PUBLIC`；忽略请求中的 `permissionLevel`；`findAccessibleByUserId` SQL 未含 SHARED/白名单 |
-| **验收** | 恢复 JSONB 字段或关联表；`PermissionServiceImpl.checkSharedAccess` 启用；列表查询与鉴权一致 |
-
----
+| **状态** | ✅ 已完成 |
+| **实现** | 恢复 `allowedRoles/Users/Departments` JSONB；创建时尊重 `permissionLevel`；`checkSharedAccess`；列表合并 owner/PUBLIC/SHARED |
 
 ### TODO-023 JWT Refresh Token
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `application.yml` 中 `app.jwt.refresh-expiration`；`JwtProvider` 无 refresh 逻辑 |
-| **验收** | 登录返回 access + refresh；`POST /v1/auth/refresh`；refresh 可吊销或轮换 |
-
----
+| **状态** | ✅ 已完成 |
+| **API** | 登录返回 `token` + `refreshToken`；`POST /v1/auth/refresh` |
 
 ### TODO-024 用户改密 API
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `UserService.changePassword()` 已有；**无** Controller |
-| **验收** | `PUT /v1/users/me/password`；校验旧密码；禁止响应返回 `passwordHash` |
-
----
+| **状态** | ✅ 已完成 |
+| **API** | `PUT /v1/users/me/password`；BCrypt 校验旧密码 |
 
 ### TODO-025 用户响应 DTO 脱敏
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `UserController` 直接返回 `User` 实体 |
-| **验收** | `UserVO` 不含 `passwordHash`；MapStruct 或手写映射 |
+| **状态** | ✅ 已完成 |
+| **实现** | `UserVO` + `UserMapper`；Controller 不再返回 `passwordHash` |
 
----
-
-### TODO-026 Pipeline 列表分页与筛选
+### TODO-026 Pipeline 列表分页
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `PipelineController.list(name, page, size)` |
-| **现状** | 参数未使用；无 `PageResponse` |
-| **验收** | JPA `Pageable`；按 name 模糊查；返回 total/pages |
+| **状态** | ✅ 已完成 |
+| **API** | `GET /v1/pipelines?name=&page=&size=` → `PageResponse` |
 
----
-
-### TODO-027 全局执行记录列表 API
+### TODO-027 全局执行记录列表
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | 仅 `GET /pipelines/{id}/runs` 与 `GET /execution/runs/{runId}` |
-| **现状** | 无法按用户/状态拉取运行中任务（多 Pipeline 运维场景） |
-| **验收** | 如 `GET /v1/execution/runs?status=RUNNING&page=`；修复 `findRunningExecutions()` 中空 pipelineId 查询 |
+| **状态** | ✅ 已完成 |
+| **API** | `GET /v1/execution/runs?status=&page=&size=`；修复 `findRunningExecutions` |
 
----
-
-### TODO-028 执行过程 `executionLog` 持久化
+### TODO-028 `executionLog` 持久化
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `ExecutionRun.executionLog`；`PipelineOrchestrator` / `ExecutionServiceImpl` |
-| **现状** | 字段存在，运行期**从未赋值**；仅 `metrics` 部分写入 |
-| **验收** | 分阶段追加 log 条目；可选 `GET .../runs/{id}/logs` |
+| **状态** | ✅ 已完成 |
+| **API** | `GET /v1/execution/runs/{id}/logs`；编排器/执行服务分阶段写入 JSONB `entries` |
 
----
-
-### TODO-029 Flyway 数据库版本管理
+### TODO-029 Flyway
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | 仅 `doc/db/init.sql` 手工脚本；`bootstrap/.../db/migration/` 为空 |
-| **验收** | 引入 Flyway；V1 对齐 init.sql；dev/prod `ddl-auto` 策略与文档一致 |
+| **状态** | ✅ 已完成（增量迁移） |
+| **实现** | `flyway-core`；`V2__p2_pipeline_and_execution.sql`；`baseline-on-migrate`；存量库仍可用 `doc/db/init.sql` |
 
----
-
-### TODO-030 多实例下执行取消与状态
+### TODO-030 多实例执行取消
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现（单机） |
-| **位置** | `ExecutionServiceImpl.runningContexts`（内存 `ConcurrentHashMap`） |
-| **现状** | 换实例或重启后无法取消；取消标志不跨节点 |
-| **验收** | DB 或 Redis 存储 RUNNING + 取消标记；Worker 轮询取消 |
+| **状态** | ✅ 已完成（DB 标志） |
+| **实现** | `execution_runs.cancel_requested`；取消时落库；Worker 轮询 `isCancelRequested` |
+| **说明** | 未引入 Redis；重启后 RUNNING 任务需运维处理 |
 
----
-
-### TODO-031 JOIN 转换与 DAG 数据依赖
+### TODO-031 JOIN 与 DAG
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `JoinProcessor` 依赖 `sharedState.join_right_records`；`PipelineOrchestrator` 未注入 |
-| **现状** | 使用 JOIN 节点易在运行时报错 |
-| **验收** | DAG 按依赖加载右表批次，或文档明确仅支持单输入 JOIN 配置方式 |
+| **状态** | ✅ 已完成 |
+| **实现** | `TransformDagSupport`：节点输出 `transform_output_{nodeId}`；JOIN 前注入 `join_right_records`（`dependsOn` / `rightNodeId`） |
 
 ---
 
@@ -456,9 +402,9 @@
 |--------|------|--------|
 | P0 | 0（已完成 5 项） | — |
 | P1 | 0（已完成 10 项） | — |
-| P2 | 16 | 权限引擎、调度、审计、异常、分页、Flyway、分布式取消 |
+| P2 | 0（已完成 16 项） | — |
 | P3 | 9 | 配置修正、测试、重试、并行 DAG、工程清理 |
-| **合计** | **25** 待办 | P0+P1 共 15 项已完成 |
+| **合计** | **9** 待办 | P0～P2 共 31 项已完成 |
 
 ---
 
@@ -469,6 +415,10 @@
 ## 已完成（P1，2026-05-21）
 
 - TODO-006～015：见上文 P1 各节（数据源测试/预览、Pipeline 预览、AI 闭环与向量阈值、`AI_ASSISTED`、Controller 资源鉴权）
+
+## 已完成（P2，2026-05-21）
+
+- TODO-016～031：见上文 P2 各节（权限引擎、审计、调度、JWT/分页、Flyway V2、执行日志与取消、JOIN DAG）
 
 ---
 

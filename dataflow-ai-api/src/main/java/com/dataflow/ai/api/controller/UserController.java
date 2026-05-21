@@ -2,8 +2,12 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.response.ApiResponse;
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.entity.User;
+import com.dataflow.ai.domain.mapper.UserMapper;
+import com.dataflow.ai.domain.request.ChangePasswordRequest;
 import com.dataflow.ai.domain.request.CreateUserRequest;
+import com.dataflow.ai.domain.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,23 +33,30 @@ public class UserController {
     @GetMapping
     @Operation(summary = "查询用户列表")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<User>> list() {
-        List<User> users = userService.findAllUsers();
-        return ApiResponse.ofSuccess(users);
+    public ApiResponse<List<UserVO>> list() {
+        return ApiResponse.ofSuccess(UserMapper.toVOList(userService.findAllUsers()));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "查询用户详情")
-    public ApiResponse<User> get(@PathVariable String id) {
+    public ApiResponse<UserVO> get(@PathVariable String id) {
         User user = userService.findById(id)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
-        return ApiResponse.ofSuccess(user);
+        return ApiResponse.ofSuccess(UserMapper.toVO(user));
+    }
+
+    @PutMapping("/me/password")
+    @Operation(summary = "修改当前用户密码")
+    public ApiResponse<Void> changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
+        String userId = SecurityUtils.getCurrentUserId();
+        userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+        return ApiResponse.ofSuccess();
     }
 
     @PostMapping
     @Operation(summary = "创建用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<User> create(@RequestBody @Valid CreateUserRequest request) {
+    public ApiResponse<UserVO> create(@RequestBody @Valid CreateUserRequest request) {
         log.info("Creating user: {}", request.getUsername());
         User user = userService.createUser(
                 request.getUsername(),
@@ -54,16 +65,16 @@ public class UserController {
                 request.getRole(),
                 request.getDepartment()
         );
-        return ApiResponse.ofSuccess(user);
+        return ApiResponse.ofSuccess(UserMapper.toVO(user));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<User> update(@PathVariable String id, @RequestBody User user) {
+    public ApiResponse<UserVO> update(@PathVariable String id, @RequestBody User user) {
         user.setId(id);
         User updated = userService.updateUser(user);
-        return ApiResponse.ofSuccess(updated);
+        return ApiResponse.ofSuccess(UserMapper.toVO(updated));
     }
 
     @DeleteMapping("/{id}")

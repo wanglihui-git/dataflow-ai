@@ -2,6 +2,9 @@ package com.dataflow.ai.business.service;
 
 import com.dataflow.ai.domain.entity.AuditLog;
 
+import com.dataflow.ai.domain.response.PageResponse;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +18,12 @@ public interface AuditLogService {
      * 记录操作日志
      */
     void log(String userId, String action, String resourceType, String resourceId, Map<String, Object> details);
+
+    void log(String userId, String action, String resourceType, String resourceId,
+             Map<String, Object> details, String ipAddress, String userAgent);
+
+    PageResponse<com.dataflow.ai.domain.entity.AuditLog> findPage(
+            String userId, String action, LocalDateTime start, LocalDateTime end, Pageable pageable);
 
     /**
      * 查询用户操作日志

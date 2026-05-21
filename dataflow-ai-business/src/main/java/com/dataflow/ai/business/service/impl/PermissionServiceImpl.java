@@ -40,10 +40,9 @@ public class PermissionServiceImpl implements PermissionService {
         if (pipeline.getPermissionLevel() == Pipeline.PermissionLevel.PUBLIC) {
             return true;
         }
-        // 共享Pipeline检查用户是否在允许列表中
-//        if (pipeline.getPermissionLevel() == Pipeline.PermissionLevel.SHARED) {
-//            return checkSharedAccess(pipeline, user);
-//        }
+        if (pipeline.getPermissionLevel() == Pipeline.PermissionLevel.SHARED) {
+            return checkSharedAccess(pipeline, user);
+        }
         return false;
     }
 
@@ -107,31 +106,22 @@ public class PermissionServiceImpl implements PermissionService {
                 || user.getRole() == UserRole.ANALYST || user.getRole() == UserRole.VIEWER;
     }
 
-    /**
-     * 检查用户是否有共享Pipeline的访问权限
-     */
-    /*
     private boolean checkSharedAccess(Pipeline pipeline, User user) {
-        // 检查角色是否在允许列表中
         if (pipeline.getAllowedRoles() != null && !pipeline.getAllowedRoles().isEmpty()) {
             if (pipeline.getAllowedRoles().contains(user.getRole().name())) {
                 return true;
             }
         }
-        // 检查用户是否在允许列表中
         if (pipeline.getAllowedUsers() != null && !pipeline.getAllowedUsers().isEmpty()) {
             if (pipeline.getAllowedUsers().contains(user.getId())) {
                 return true;
             }
         }
-        // 检查部门是否在允许列表中
         if (pipeline.getAllowedDepartments() != null && !pipeline.getAllowedDepartments().isEmpty()) {
-            if (pipeline.getAllowedDepartments().contains(user.getDepartment())) {
+            if (user.getDepartment() != null && pipeline.getAllowedDepartments().contains(user.getDepartment())) {
                 return true;
             }
         }
         return false;
     }
-
-     */
 }

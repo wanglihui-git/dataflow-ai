@@ -3,6 +3,7 @@ package com.dataflow.ai.business.service.impl;
 import com.dataflow.ai.business.repository.UserRepository;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
+import com.dataflow.ai.domain.exception.BusinessException;
 import com.dataflow.ai.domain.request.LoginRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.infrastructure.security.JwtProvider;
@@ -59,7 +60,8 @@ class UserServiceImplTest {
                 .build();
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret", "hash")).thenReturn(true);
-        when(jwtProvider.generateToken("user-001", "admin", "ADMIN")).thenReturn("jwt");
+        when(jwtProvider.generateAccessToken("user-001", "admin", "ADMIN")).thenReturn("jwt");
+        when(jwtProvider.generateRefreshToken("user-001", "admin", "ADMIN")).thenReturn("refresh");
 
         LoginResponse response = userService.login(
                 LoginRequest.builder().username("admin").password("secret").build());
@@ -74,7 +76,7 @@ class UserServiceImplTest {
     void login_userNotFound() {
         when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> userService.login(
+        assertThrows(BusinessException.class, () -> userService.login(
                 LoginRequest.builder().username("nobody").password("x").build()));
     }
 

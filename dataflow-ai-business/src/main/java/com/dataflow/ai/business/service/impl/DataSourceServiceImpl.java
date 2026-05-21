@@ -2,11 +2,15 @@ package com.dataflow.ai.business.service.impl;
 
 import com.dataflow.ai.business.engine.source.SourceReader;
 import com.dataflow.ai.business.engine.source.SourceReaderFactory;
+import com.dataflow.ai.business.permission.PermissionEngine;
 import com.dataflow.ai.business.repository.DataSourceRepository;
+import com.dataflow.ai.business.repository.UserRepository;
 import com.dataflow.ai.business.service.DataSourceService;
 import com.dataflow.ai.business.util.RecordPreviewMapper;
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
+import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 import com.dataflow.ai.domain.vo.SourceConfig;
@@ -39,6 +43,12 @@ public class DataSourceServiceImpl implements DataSourceService {
 
     @Resource
     private SourceReaderFactory sourceReaderFactory;
+
+    @Resource
+    private PermissionEngine permissionEngine;
+
+    @Resource
+    private UserRepository userRepository;
 
     @Override
     public Optional<DataSource> findById(String id) {
@@ -124,10 +134,31 @@ public class DataSourceServiceImpl implements DataSourceService {
             Map<String, Object> result = new HashMap<>(RecordPreviewMapper.toPreviewMap(records));
             result.put("dataSourceId", dataSourceId);
             result.put("type", dataSource.getType().name());
+            applyPreviewPermissions(result, dataSourceId);
             return result;
         } catch (Exception e) {
             log.error("Preview failed for datasource {}: {}", dataSourceId, e.getMessage(), e);
             throw new RuntimeException("数据预览失败: " + e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyPreviewPermissions(Map<String, Object> result, String dataSourceId) {
+        try {
+            String userId = SecurityUtils.getCurrentUserId();
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                return;
+            }
+            Object rowsObj = result.get("rows");
+            if (rowsObj instanceof List<?> rows) {
+                List<Map<String, Object>> rowMaps = (List<Map<String, Object>>) rows;
+                List<Map<String, Object>> masked = permissionEngine.applyPermissions(rowMaps, dataSourceId, userOpt.get());
+                result.put("rows", masked);
+                result.put("rowCount", masked.size());
+            }
+        } catch (Exception e) {
+            log.debug("Skip preview permission masking: {}", e.getMessage());
         }
     }
 

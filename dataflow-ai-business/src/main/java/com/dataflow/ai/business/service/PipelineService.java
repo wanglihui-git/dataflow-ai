@@ -4,6 +4,9 @@ import com.dataflow.ai.domain.request.CreatePipelineRequest;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 
+import com.dataflow.ai.domain.response.PageResponse;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +30,11 @@ public interface PipelineService {
      * 查询用户有权限访问的Pipeline
      */
     List<Pipeline> findByUser(String userId);
+
+    /**
+     * 分页查询用户可访问的 Pipeline
+     */
+    PageResponse<Pipeline> findByUserPage(String userId, String name, Pageable pageable);
 
     /**
      * 创建Pipeline

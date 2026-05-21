@@ -1,6 +1,7 @@
 package com.dataflow.ai.business.engine.preview;
 
 import com.dataflow.ai.business.engine.dag.DagExecutor;
+import com.dataflow.ai.business.engine.util.TransformDagSupport;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.source.SourceReader;
 import com.dataflow.ai.business.engine.source.SourceReaderFactory;
@@ -72,6 +73,7 @@ public class PipelinePreviewExecutor {
                                          String pipelineId, ExecutionContext ctx) throws Exception {
         List<Record> transformed = new ArrayList<>(inputRecords);
         for (Transform transform : transforms) {
+            TransformDagSupport.prepareJoinRightData(transform, ctx.getSharedState());
             TransformProcessor processor = transformProcessorFactory.createProcessor(transform.getType());
             TransformContext transformContext = TransformContext.builder()
                     .transform(transform)
@@ -98,6 +100,7 @@ public class PipelinePreviewExecutor {
                 next.addAll(out.getRecords());
             }
             transformed = next;
+            TransformDagSupport.saveNodeOutput(ctx.getSharedState(), transform.getNodeId(), transformed);
         }
         return transformed;
     }

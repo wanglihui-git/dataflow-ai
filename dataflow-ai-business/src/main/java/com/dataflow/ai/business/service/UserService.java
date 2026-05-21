@@ -56,5 +56,10 @@ public interface UserService {
     /**
      * 修改密码
      */
-    void changePassword(String userId, String oldPasswordHash, String newPasswordHash);
+    void changePassword(String userId, String oldPassword, String newPassword);
+
+    /**
+     * 使用 refresh token 换取新的 access token
+     */
+    LoginResponse refreshToken(String refreshToken);
 }

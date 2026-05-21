@@ -17,6 +17,11 @@ public interface ExecutionRunJpaRepository extends JpaRepository<ExecutionRun, S
 
     List<ExecutionRun> findByTriggeredBy(String triggeredBy);
 
+    List<ExecutionRun> findByStatus(ExecutionStatus status);
+
+    org.springframework.data.domain.Page<ExecutionRun> findByStatus(
+            ExecutionStatus status, org.springframework.data.domain.Pageable pageable);
+
     long countByPipelineId(String pipelineId);
 
     long countByPipelineIdAndStatus(String pipelineId, ExecutionStatus status);

@@ -3,7 +3,7 @@
 > 追踪每个 REST 接口在 **Controller → Service → Repository → JPA** 的调用链，并记录各层测试覆盖状态。  
 > **范围**：后端 Java 模块（不含 `web/` 前端）。  
 > **关联**：[ARCHITECTURE_AND_API.md](./ARCHITECTURE_AND_API.md)、[BACKEND_TODO.md](./BACKEND_TODO.md)  
-> **更新日期**：2026-05-21（P1：数据源测试/预览、Pipeline 预览、AI 闭环、鉴权单测）
+> **更新日期**：2026-05-21（P2：权限引擎、分页、JWT、审计、执行日志单测）
 
 ---
 
@@ -502,7 +502,15 @@ AIController.submitFeedback
 | T3 | `UserServiceImplTest`（login/create 密码编码） | A1, U3 |
 | T4 | ✅ `AIServiceImplTest` + infrastructure LLM/Embedding 单测 | AI1–AI3 |
 
-### 7.2 P1 — 核心业务 API（已完成 2026-05-21）
+### 7.2 P2 — 企业特性（已完成 2026-05-21）
+
+| 序号 | 任务 | 关联 |
+|------|------|------|
+| T14 | ✅ `PermissionEngineImplTest`、`GlobalExceptionHandler`（集成于 Controller 测试） | TODO-016～020 |
+| T15 | ✅ `UserServiceImplTest` refresh token mock | TODO-023～025 |
+| T16 | ✅ `PipelineControllerTest` 分页 `PageResponse` | TODO-026 |
+
+### 7.3 P1 — 核心业务 API（已完成 2026-05-21）
 
 | 序号 | 任务 | 关联接口 |
 |------|------|----------|
@@ -561,6 +569,7 @@ AIController.submitFeedback
 | 2026-05-18 | 补充 api/business 全层单测；Controller 迁至 `dataflow-ai-api/src/test`；新增 `TestSecurityConfig`、`WithMockUserId`；8 个 `@Disabled` 占位用例 |
 | 2026-05-20 | P0：`TransformResponseParserTest`、`OpenAiCompatibleLlmClientTest`、`OpenAiCompatibleEmbeddingGeneratorTest`、`EncryptionServiceTest`；启用 `AIServiceImplTest.generateTransforms_parsesLlmResponse` |
 | 2026-05-21 | P1：`DataSourceServiceImplTest`（test/preview）、`PipelineServiceImplTest`（preview）、`AIServiceImplTest`（5 用例）、`VectorSimilarityUtilsTest`、`PermissionServiceImplTest`；Controller 鉴权 `ControllerTestAuthSupport` |
+| 2026-05-21 | P2：`PermissionEngineImplTest`、`UserServiceImplTest`（access/refresh）、Pipeline 分页测试；Flyway `V2__p2_pipeline_and_execution.sql` |
 
 ---
 

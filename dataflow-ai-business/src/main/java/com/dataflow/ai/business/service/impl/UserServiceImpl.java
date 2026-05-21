@@ -1,7 +1,9 @@
 package com.dataflow.ai.business.service.impl;
 
+import com.dataflow.ai.domain.exception.BusinessException;
 import com.dataflow.ai.domain.request.LoginRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
+import com.dataflow.ai.domain.response.ResponseCode;
 import com.dataflow.ai.business.repository.UserRepository;
 import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.entity.User;
@@ -18,9 +20,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * 用户服务实现
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,21 +34,42 @@ public class UserServiceImpl implements UserService {
     @Override
     public LoginResponse login(LoginRequest request) {
         log.info("User login attempt: {}", request.getUsername());
-        Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("用户名或密码错误");
-        }
-        User user = userOpt.get();
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new BusinessException(ResponseCode.CODE_401, "用户名或密码错误"));
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException(ResponseCode.CODE_401, "用户名或密码错误");
         }
-        // 更新最后登录时间
         updateLastLogin(user.getId());
-        // 生成token
-        String token = jwtProvider.generateToken(user.getId(), user.getUsername(), user.getRole().name());
+        return buildLoginResponse(user);
+    }
 
+    @Override
+    public LoginResponse refreshToken(String refreshToken) {
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ResponseCode.CODE_401, "刷新令牌无效或已过期");
+        }
+        try {
+            String access = jwtProvider.refreshAccessToken(refreshToken);
+            String userId = jwtProvider.getUserIdFromToken(refreshToken);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BusinessException(ResponseCode.CODE_401, "用户不存在"));
+            return LoginResponse.builder()
+                    .token(access)
+                    .refreshToken(refreshToken)
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .role(user.getRole().name())
+                    .department(user.getDepartment())
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ResponseCode.CODE_401, e.getMessage());
+        }
+    }
+
+    private LoginResponse buildLoginResponse(User user) {
         return LoginResponse.builder()
-                .token(token)
+                .token(jwtProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name()))
+                .refreshToken(jwtProvider.generateRefreshToken(user.getId(), user.getUsername(), user.getRole().name()))
                 .userId(user.getId())
                 .username(user.getUsername())
                 .role(user.getRole().name())
@@ -103,16 +123,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void changePassword(String userId, String oldPasswordHash, String newPasswordHash) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("用户不存在");
+    public void changePassword(String userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.CODE_404, "用户不存在"));
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new BusinessException(ResponseCode.CODE_400, "原密码错误");
         }
-        User user = userOpt.get();
-        if (!user.getPasswordHash().equals(oldPasswordHash)) {
-            throw new RuntimeException("原密码错误");
-        }
-        user.setPasswordHash(newPasswordHash);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
 }
