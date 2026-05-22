@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 审计日志 Spring Data JPA 仓储
+ */
 public interface AuditLogJpaRepository extends JpaRepository<AuditLog, Long> {
 
     List<AuditLog> findByUserId(String userId);

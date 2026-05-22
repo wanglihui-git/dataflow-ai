@@ -43,6 +43,14 @@ public class ApiSourceReader implements SourceReader {
 
     private static final int DEFAULT_PREVIEW_SIZE = 100;
 
+    /**
+     * 从数据源读取记录并更新执行上下文中的已处理计数。
+     *
+     * @param sourceConfig 源配置
+     * @param context      执行上下文
+     * @return 读取到的记录列表
+     * @throws Exception 连接、查询或解析失败时抛出
+     */
     @Override
     public List<Record> read(com.dataflow.ai.domain.vo.SourceConfig sourceConfig, ExecutionContext context)
             throws Exception {
@@ -121,11 +129,22 @@ public class ApiSourceReader implements SourceReader {
         }
     }
 
+    /**
+     * 返回本读取器支持的数据源类型。
+     *
+     * @return 数据源类型枚举
+     */
     @Override
     public DataSourceType getSupportedType() {
         return DataSourceType.API;
     }
 
+    /**
+     * 测试数据源是否可连接或文件是否可读。
+     *
+     * @param dataSource 数据源实体
+     * @return 连接成功返回 true
+     */
     @Override
     public boolean testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
@@ -140,6 +159,14 @@ public class ApiSourceReader implements SourceReader {
         }
     }
 
+    /**
+     * 采样预览数据源中的部分记录。
+     *
+     * @param sourceConfig 源配置
+     * @param sampleSize   最大采样条数
+     * @return 预览记录列表
+     * @throws Exception 读取失败时抛出
+     */
     @Override
     public List<Record> preview(com.dataflow.ai.domain.vo.SourceConfig sourceConfig, int sampleSize)
             throws Exception {

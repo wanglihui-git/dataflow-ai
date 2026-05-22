@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 指令模式 Spring Data JPA 仓储
+ */
 public interface InstructionPatternJpaRepository extends JpaRepository<InstructionPattern, Long> {
 
     Optional<InstructionPattern> findByInstructionHash(String instructionHash);

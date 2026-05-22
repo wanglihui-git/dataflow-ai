@@ -24,6 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * PermissionEngineImpl 行级过滤与列脱敏单测。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class PermissionEngineImplTest {
 
@@ -39,9 +43,13 @@ class PermissionEngineImplTest {
     @InjectMocks
     private PermissionEngineImpl permissionEngine;
 
+    /**
+     * 验证：MASKED 字段脱敏。
+     */
     @Test
     @DisplayName("MASKED 字段脱敏")
     void masksField() {
+        // 准备：配置 Mock 返回值
         when(permissionProperties.isEnabled()).thenReturn(true);
         when(fieldPermissionRepository.findMatchingRules(any(), any(), any(), any(), any()))
                 .thenReturn(List.of(DataFieldPermission.builder()
@@ -53,6 +61,7 @@ class PermissionEngineImplTest {
         Map<String, Object> row = new java.util.HashMap<>(Map.of("phone", "13812345678"));
         Map<String, Object> result = permissionEngine.applyPermissions(row, "ds-1", user);
 
+        // 断言：校验响应或交互
         assertEquals("138****5678", result.get("phone"));
     }
 }

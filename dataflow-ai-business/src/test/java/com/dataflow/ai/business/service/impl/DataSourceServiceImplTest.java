@@ -29,6 +29,10 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * DataSourceServiceImpl 创建、连接测试与预览单测。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class DataSourceServiceImplTest {
 
@@ -47,9 +51,13 @@ class DataSourceServiceImplTest {
     @InjectMocks
     private DataSourceServiceImpl dataSourceService;
 
+    /**
+     * 验证：createDataSource - 加密并保存。
+     */
     @Test
     @DisplayName("createDataSource - 加密并保存")
     void createDataSource_encryptsAndSaves() {
+        // 准备：配置 Mock 返回值
         when(encryptionService.encrypt(anyMap())).thenReturn(Map.of("url", "enc"));
         when(dataSourceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -62,10 +70,14 @@ class DataSourceServiceImplTest {
         DataSource saved = dataSourceService.createDataSource(request, "user-001");
 
         assertTrue(saved.getId() != null && !saved.getId().isBlank());
+        // 断言：校验响应或交互
         verify(encryptionService).encrypt(anyMap());
         verify(dataSourceRepository).save(any());
     }
 
+    /**
+     * 验证：testConnection - 委托 SourceReader。
+     */
     @Test
     @DisplayName("testConnection - 委托 SourceReader")
     void testConnection_delegatesToReader() {
@@ -74,6 +86,7 @@ class DataSourceServiceImplTest {
                 .type(DataSourceType.MYSQL)
                 .connectionConfig(Map.of("k", "v"))
                 .build();
+        // 准备：配置 Mock 返回值
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
         when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
         when(sourceReader.testConnection(ds)).thenReturn(true);
@@ -81,10 +94,14 @@ class DataSourceServiceImplTest {
         assertTrue(dataSourceService.testConnection("ds-1"));
     }
 
+    /**
+     * 验证：testConnection - 失败返回 false。
+     */
     @Test
     @DisplayName("testConnection - 失败返回 false")
     void testConnection_failureReturnsFalse() {
         DataSource ds = DataSource.builder().id("ds-1").type(DataSourceType.API).build();
+        // 准备：配置 Mock 返回值
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
         when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
         when(sourceReader.testConnection(ds)).thenReturn(false);
@@ -92,6 +109,9 @@ class DataSourceServiceImplTest {
         assertFalse(dataSourceService.testConnection("ds-1"));
     }
 
+    /**
+     * 验证：previewSourceData - 返回 columns 与 rows。
+     */
     @Test
     @DisplayName("previewSourceData - 返回 columns 与 rows")
     void previewSourceData_returnsColumnsAndRows() throws Exception {
@@ -99,6 +119,7 @@ class DataSourceServiceImplTest {
                 .id("ds-1")
                 .type(DataSourceType.MYSQL)
                 .build();
+        // 准备：配置 Mock 返回值
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
         when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
 
@@ -110,6 +131,7 @@ class DataSourceServiceImplTest {
 
         Map<String, Object> result = dataSourceService.previewSourceData("ds-1", "users", null, 5);
 
+        // 断言：校验响应或交互
         assertEquals(1, result.get("rowCount"));
         assertTrue(((List<?>) result.get("columns")).contains("name"));
     }

@@ -1,7 +1,8 @@
 # DataFlow AI — 架构与功能文档
 
 > 版本基于代码库当前实现（Spring Boot 3.2.3）。  
-> 所有业务 API 统一前缀：`http://{host}:8080/api`（`server.servlet.context-path=/api`）。
+> 所有业务 API 统一前缀：`http://127.0.0.1:8080/api`（`server.servlet.context-path=/api`）。  
+> **API 章节更新**：2026-05-22（与 Controller 源码对齐，共 43 个 HTTP 端点）。
 
 ---
 
@@ -73,7 +74,7 @@ dataflow-ai/                          # 父 POM（多模块）
 
 | 模块 | 职责 |
 |------|------|
-| **common** | `SecurityUtils`、通用异常类（`GlobalExceptionHandler` 当前为空实现） |
+| **common** | `SecurityUtils`、通用异常与 `BusinessException`（`GlobalExceptionHandler` 在 api 模块） |
 | **domain** | JPA 实体、`request`/`response`、值对象 `SourceConfig`/`Transform` 等 |
 | **infrastructure** | `JwtProvider`、`JwtAuthenticationFilter`、`EncryptionService`、`LLMClient`、`EmbeddingClient` |
 | **business** | `*Service` 实现、JPA Repository、Pipeline 编排器与 SPI 式 Source/Transform/Sink |
@@ -205,7 +206,7 @@ PENDING → RUNNING → SUCCESS | FAILED | CANCELLED
 
 | 路径模式 | 说明 |
 |----------|------|
-| `/api/v1/auth/**` | 登录、登出 |
+| `/api/v1/auth/**` | 登录、刷新、登出 |
 | `/api/swagger-ui/**`、`/api/v3/api-docs/**`、`/api/doc.html` 等 | API 文档 |
 | `/api/actuator/health` | 健康检查 |
 
@@ -267,7 +268,7 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 
 ## 10. 统一响应格式
 
-所有 Controller 返回 `ApiResponse<T>`：
+所有 Controller 返回 `ApiResponse<T>`（JSON）：
 
 ```json
 {
@@ -277,21 +278,75 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 }
 ```
 
-| code | 含义 |
-|------|------|
-| 200 | 成功（`ResponseCode.SUCCESS`） |
-| 400 | 参数无效（枚举已定义，全局处理器未统一映射） |
-| 401 | 未认证 |
-| 500 | 失败（`ResponseCode.FAILURE`） |
+| HTTP 状态 | code（body） | 场景 |
+|-----------|--------------|------|
+| 200 | 200 | 成功 |
+| 400 | 400 | `@Valid` 校验失败 |
+| 401 | — | 无效/缺失 JWT |
+| 500 | 500 | 未捕获异常 |
+| 200 | 403/404/409 | `BusinessException`（HTTP 200，body 带业务 code） |
 
-业务异常目前多抛出 `RuntimeException`，由 Spring 默认机制返回 500，**未**统一包装为 `ApiResponse`。
+`GlobalExceptionHandler` 统一处理校验与业务异常。
+
+**分页** `PageResponse<T>`：`content`, `page`, `size`, `totalElements`, `totalPages`。
 
 ---
 
 ## 11. REST API 详细说明
 
-> **完整 URL** = `http://{host}:8080/api` + 下表「路径」  
-> 除「认证」分组外，均需在 Header 携带 `Authorization: Bearer <token>`。
+> **基址**：`http://127.0.0.1:8080/api`  
+> **鉴权**：除标注「认证：否」外，需 `Authorization: Bearer <JWT>`。  
+> 下列示例为 PowerShell `curl`；登录后使用 `$token`。
+
+### 11.0 接口总览
+
+| # | 方法 | 路径 | 认证 | 说明 |
+|---|------|------|------|------|
+| 1 | POST | /v1/auth/login | 否 | 登录 |
+| 2 | POST | /v1/auth/refresh | 否 | 刷新令牌 |
+| 3 | POST | /v1/auth/logout | 否 | 登出 |
+| 4 | GET | /v1/users | 是 | ADMIN 列表 |
+| 5 | GET | /v1/users/{id} | 是 | 用户详情 |
+| 6 | PUT | /v1/users/me/password | 是 | 改密 |
+| 7 | POST | /v1/users | 是 | ADMIN 创建 |
+| 8 | PUT | /v1/users/{id} | 是 | ADMIN 更新 |
+| 9 | DELETE | /v1/users/{id} | 是 | ADMIN 删除 |
+| 10 | POST | /v1/data-sources | 是 | 创建数据源 |
+| 11 | GET | /v1/data-sources | 是 | 列表 |
+| 12 | GET | /v1/data-sources/{id} | 是 | 详情 |
+| 13 | PUT | /v1/data-sources/{id} | 是 | 更新 |
+| 14 | DELETE | /v1/data-sources/{id} | 是 | 删除 |
+| 15 | POST | /v1/data-sources/{id}/test | 是 | 测连 |
+| 16 | POST | /v1/data-sources/{id}/preview | 是 | 预览 |
+| 17 | GET | /v1/data-sources/{dataSourceId}/column-permissions | 是 | 列权限列表 |
+| 18 | POST | /v1/data-sources/{dataSourceId}/column-permissions | 是 | 创建列权限 |
+| 19 | DELETE | /v1/data-sources/{dataSourceId}/column-permissions/{id} | 是 | 删除列权限 |
+| 20 | GET | /v1/data-sources/{dataSourceId}/row-permissions | 是 | 行权限列表 |
+| 21 | POST | /v1/data-sources/{dataSourceId}/row-permissions | 是 | 创建行权限 |
+| 22 | DELETE | /v1/data-sources/{dataSourceId}/row-permissions/{id} | 是 | 删除行权限 |
+| 23 | POST | /v1/pipelines | 是 | 创建 Pipeline |
+| 24 | GET | /v1/pipelines | 是 | Pipeline 分页 |
+| 25 | GET | /v1/pipelines/{id} | 是 | 详情 |
+| 26 | PUT | /v1/pipelines/{id} | 是 | 更新 |
+| 27 | DELETE | /v1/pipelines/{id} | 是 | 删除 |
+| 28 | POST | /v1/pipelines/{id}/run | 是 | 执行 |
+| 29 | GET | /v1/pipelines/{id}/runs | 是 | 执行历史 |
+| 30 | GET | /v1/pipelines/{id}/preview | 是 | 预览转换 |
+| 31 | GET | /v1/execution/runs | 是 | 分页查询执行 |
+| 32 | GET | /v1/execution/runs/{runId} | 是 | 执行详情 |
+| 33 | GET | /v1/execution/runs/{runId}/logs | 是 | 执行日志 |
+| 34 | POST | /v1/execution/runs/{runId}/cancel | 是 | 取消 |
+| 35 | GET | /v1/execution/pipelines/{pipelineId}/stats | 是 | 统计 |
+| 36 | POST | /v1/ai/generate-transforms | 是 | AI 生成 |
+| 37 | POST | /v1/ai/search-similar | 是 | 相似指令 |
+| 38 | POST | /v1/ai/feedback | 是 | 反馈 |
+| 39 | GET | /v1/audit-logs | 是 | ADMIN 审计 |
+| 40 | GET | /actuator/health | 否 | 健康检查 |
+| 41 | GET | /actuator/info | 是 | 应用信息 |
+| 42 | GET | /actuator/metrics | 是 | 指标 |
+| 43 | GET | /actuator/prometheus | 是 | Prometheus |
+
+**合计：39 业务 REST + 4 Actuator。**
 
 ---
 
@@ -299,46 +354,31 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 
 基础路径：`/v1/auth`
 
+
 #### POST `/v1/auth/login`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 用户登录，返回 JWT |
-| **认证** | 不需要 |
-| **Content-Type** | `application/json` |
+| **说明** | 校验用户名密码，返回 JWT 与 refreshToken。 |
+| **认证** | 否 |
+| **权限** | — |
 
-**请求体 `LoginRequest`**
+**参数**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| username | string | 是 | 用户名 |
-| password | string | 是 | 明文密码 |
+| 位置 | 名称 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| Body | username | string | 是 | 用户名 |
+| Body | password | string | 是 | 密码 |
 
-**响应 `ApiResponse<LoginResponse>` — data 字段**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| token | string | JWT |
-| userId | string | 用户 ID |
-| username | string | 用户名 |
-| role | string | 角色名（如 `ADMIN`） |
-| department | string | 部门，可空 |
-
-**示例**
-
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{"username":"admin","password":"******"}
-```
+**响应体**
 
 ```json
 {
   "code": 200,
   "msg": "Success",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "userId": "u-001",
     "username": "admin",
     "role": "ADMIN",
@@ -347,454 +387,1873 @@ Content-Type: application/json
 }
 ```
 
----
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+```
+
+```powershell
+$token = (curl.exe -s -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}" | ConvertFrom-Json).data.token
+```
+
+#### POST `/v1/auth/refresh`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 使用 refreshToken 换取新的 token 对。 |
+| **认证** | 否 |
+| **权限** | — |
+
+**参数**
+
+| Body | refreshToken | string | 是 | 刷新令牌 |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "userId": "u-001",
+    "username": "admin",
+    "role": "ADMIN",
+    "department": "IT"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/refresh" -H "Content-Type: application/json" -d '{"refreshToken":"<refresh-token>"}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+```
 
 #### POST `/v1/auth/logout`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 登出（服务端无状态，不吊销 Token） |
-| **认证** | 不需要（建议仍带 Token 以便审计扩展） |
-| **请求体** | 无 |
-| **响应** | `ApiResponse<Void>`，`data` 为 null |
+| **说明** | 无状态登出；客户端清除 token。 |
+| **认证** | 否 |
+| **权限** | — |
 
----
+**参数**
+
+无。
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/logout" -H "Content-Type: application/json"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/auth/logout" -H "Authorization: Bearer $token"
+```
+
 
 ### 11.2 用户（UserController）
 
 基础路径：`/v1/users`
 
+
 #### GET `/v1/users`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 查询全部用户列表 |
-| **权限** | `ROLE_ADMIN` |
-| **Query** | 无 |
+| **说明** | 查询全部用户（不含密码）。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | ROLE_ADMIN |
 
-**响应 data**：`User[]`
+**参数**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 用户 ID |
-| username | string | 用户名 |
-| email | string | 邮箱 |
-| passwordHash | string | 密码哈希（**响应中暴露，生产需注意**） |
-| role | UserRole | ADMIN / DEVELOPER / ANALYST / VIEWER |
-| department | string | 部门 |
-| status | string | 状态 |
-| createdAt | datetime | 创建时间 |
-| lastLoginAt | datetime | 最后登录 |
+无。
 
----
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [{
+    "id": "u-002",
+    "username": "dev1",
+    "email": "dev1@corp.com",
+    "role": "DEVELOPER",
+    "department": "RD",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "lastLoginAt": "2026-05-22 09:30:00"
+  }]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/users" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/users" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/users/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 按 ID 查询用户 |
-| **权限** | 已登录用户 |
-| **路径参数** | `id` — 用户 ID |
+| **说明** | 按 ID 查询用户。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-**响应 data**：单个 `User`（结构同上）  
-**错误**：用户不存在时 `RuntimeException` → HTTP 500
+**参数**
 
----
+| Path | id | string | 是 | 用户 ID |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "u-002",
+    "username": "dev1",
+    "email": "dev1@corp.com",
+    "role": "DEVELOPER",
+    "department": "RD",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "lastLoginAt": "2026-05-22 09:30:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+```
+
+#### PUT `/v1/users/me/password`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 修改当前登录用户密码。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
+
+**参数**
+
+| Body | oldPassword | string | 是 |
+| Body | newPassword | string | 是 |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/me/password" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"oldPassword":"admin123","newPassword":"NewPass123!"}'
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/users/me/password" -H "Authorization: Bearer $token"
+```
 
 #### POST `/v1/users`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 创建用户 |
-| **权限** | `ROLE_ADMIN` |
+| **说明** | 创建用户。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | ROLE_ADMIN |
 
-**请求体 `CreateUserRequest`**
+**参数**
 
-| 字段 | 类型 | 必填 | 校验 | 说明 |
-|------|------|------|------|------|
-| username | string | 是 | @NotBlank | 用户名 |
-| email | string | 是 | @Email | 邮箱 |
-| password | string | 是 | @Size(min=6) | 密码 |
-| role | UserRole | 是 | @NotNull | 角色枚举 |
-| department | string | 否 | — | 部门 |
+| Body | username, email, password, role, department? | `CreateUserRequest` |
 
-**响应 data**：创建后的 `User`
+**响应体**
 
----
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "u-002",
+    "username": "dev1",
+    "email": "dev1@corp.com",
+    "role": "DEVELOPER",
+    "department": "RD",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "lastLoginAt": "2026-05-22 09:30:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER","department":"RD"}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER"}'
+```
 
 #### PUT `/v1/users/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 更新用户（请求体为完整 `User` 实体） |
-| **权限** | `ROLE_ADMIN` |
-| **路径参数** | `id` — 将覆盖 body 中的 id |
+| **说明** | 更新用户；Path id 覆盖 Body id。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | ROLE_ADMIN |
 
-**请求体**：`User` JSON（字段同 GET 响应）
+**参数**
 
-**响应 data**：更新后的 `User`
+| Path | id | Body: User JSON |
 
----
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "u-002",
+    "username": "dev1",
+    "email": "dev1@corp.com",
+    "role": "DEVELOPER",
+    "department": "RD",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "lastLoginAt": "2026-05-22 09:30:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","role":"ANALYST","status":"active"}'
+```
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"department":"Platform"}'
+```
 
 #### DELETE `/v1/users/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 删除用户 |
-| **权限** | `ROLE_ADMIN` |
-| **响应** | `ApiResponse<Void>` |
+| **说明** | 删除用户。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | ROLE_ADMIN |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/users/u-999" -H "Authorization: Bearer $token"
+```
+
 
 ### 11.3 数据源（DataSourceController）
 
-基础路径：`/v1/data-sources`  
-> 注意：路径为 **data-sources**（带连字符），非 README 中的 `datasources`。
+基础路径：`/v1/data-sources`
+
 
 #### POST `/v1/data-sources`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 创建数据源（归属当前登录用户） |
+| **说明** | 创建数据源，连接配置加密存储。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-**请求体 `CreateDataSourceRequest`**
+**参数**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 建议填 | 数据源名称 |
-| type | DataSourceType | 建议填 | MYSQL / POSTGRES / API / KAFKA / CSV |
-| connectionConfig | object | 建议填 | 连接参数 Map，写入前加密 |
+| Body | name, type, connectionConfig | `CreateDataSourceRequest` |
 
-**connectionConfig 示例（MySQL，逻辑结构，实际键名以实现为准）**
+**响应体**
 
 ```json
 {
-  "host": "localhost",
-  "port": 3306,
-  "database": "demo",
-  "username": "root",
-  "password": "secret"
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "ds-001",
+    "name": "mysql-demo",
+    "type": "MYSQL",
+    "connectionConfig": {
+      "host": "ENC(...)",
+      "port": 3306,
+      "database": "demo",
+      "username": "ENC(...)",
+      "password": "ENC(...)"
+    },
+    "createdBy": "u-001",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
 }
 ```
 
-**响应 data**：`DataSource`
+**示例**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 数据源 ID |
-| name | string | 名称 |
-| type | DataSourceType | 类型 |
-| connectionConfig | object | 加密后的配置（可能不可读） |
-| createdBy | string | 创建者 userId |
-| createdAt / updatedAt | datetime | 时间戳 |
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
+```
 
----
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
+```
 
 #### GET `/v1/data-sources`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 列出**当前用户**创建的数据源 |
-| **响应 data** | `DataSource[]` |
+| **说明** | 列出当前用户创建的数据源。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
----
+**参数**
+
+无。
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [{
+    "id": "ds-001",
+    "name": "mysql-demo",
+    "type": "MYSQL",
+    "connectionConfig": {
+      "host": "ENC(...)",
+      "port": 3306,
+      "database": "demo",
+      "username": "ENC(...)",
+      "password": "ENC(...)"
+    },
+    "createdBy": "u-001",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/data-sources/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 数据源详情 |
-| **路径参数** | `id` |
+| **说明** | 数据源详情。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 资源访问权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "ds-001",
+    "name": "mysql-demo",
+    "type": "MYSQL",
+    "connectionConfig": {
+      "host": "ENC(...)",
+      "port": 3306,
+      "database": "demo",
+      "username": "ENC(...)",
+      "password": "ENC(...)"
+    },
+    "createdBy": "u-001",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+```
 
 #### PUT `/v1/data-sources/{id}`
 
-**请求体 `UpdateDataSourceRequest`**（字段均可选，只更新非 null 字段）
+| 项 | 内容 |
+|----|------|
+| **说明** | 部分更新。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改权 |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| name | string | 名称 |
-| type | DataSourceType | 类型 |
-| connectionConfig | object | 新连接配置（会重新加密） |
+**参数**
 
----
+| Body | name?, type?, connectionConfig? |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "ds-001",
+    "name": "mysql-demo",
+    "type": "MYSQL",
+    "connectionConfig": {
+      "host": "ENC(...)",
+      "port": 3306,
+      "database": "demo",
+      "username": "ENC(...)",
+      "password": "ENC(...)"
+    },
+    "createdBy": "u-001",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo-v2"}'
+```
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"connectionConfig":{"host":"10.0.0.1"}}'
+```
 
 #### DELETE `/v1/data-sources/{id}`
 
-删除指定数据源。
+| 项 | 内容 |
+|----|------|
+| **说明** | 删除数据源。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+```
 
 #### POST `/v1/data-sources/{id}/test`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 测试数据源连通性 |
-| **响应 data** | `boolean` — `true` 表示成功 |
+| **说明** | 测试连通性。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": true
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
 
 #### POST `/v1/data-sources/{id}/preview`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 预览源数据样本 |
+| **说明** | 预览源数据样本。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
-**Query 参数**
+**参数**
 
-| 参数 | 类型 | 必填 | 默认 | 说明 |
-|------|------|------|------|------|
-| tableName | string | 否 | — | 表名（库表类源） |
-| query | string | 否 | — | 自定义 SQL/查询 |
-| sampleSize | int | 否 | 10 | 采样条数 |
+| Query | tableName?, query?, sampleSize?（默认 10） |
 
-**响应 data**：`Map<String, Object>`（结构由 `DataSourceService.previewSourceData` 决定，通常含列信息与样本行）
+**响应体**
 
----
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "columns": ["id", "order_no", "amount"],
+    "rows": [
+      {"id": 1, "order_no": "A001", "amount": 99.5},
+      {"id": 2, "order_no": "A002", "amount": 120.0}
+    ],
+    "rowCount": 2,
+    "sampleSize": 10
+  }
+}
+```
 
-### 11.4 Pipeline（PipelineController）
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/preview?tableName=orders&sampleSize=5" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/preview?query=SELECT%20*%20FROM%20orders%20LIMIT%205" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
+
+
+### 11.4 数据权限（DataPermissionController）
+
+
+#### GET `/v1/data-sources/{dataSourceId}/column-permissions`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 列权限列表。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 数据源访问 |
+
+**参数**
+
+| Path | dataSourceId |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [{
+    "id": "cp-001",
+    "dataSourceId": "ds-001",
+    "columnName": "salary",
+    "targetRole": "ANALYST",
+    "targetDepartment": null,
+    "targetUser": null,
+    "accessType": "MASKED",
+    "maskRule": "****",
+    "createdAt": "2026-05-21 12:00:00"
+  }]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
+```
+
+#### POST `/v1/data-sources/{dataSourceId}/column-permissions`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 创建列权限。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改数据源 |
+
+**参数**
+
+| Body | DataFieldPermission |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "cp-001",
+    "dataSourceId": "ds-001",
+    "columnName": "salary",
+    "targetRole": "ANALYST",
+    "targetDepartment": null,
+    "targetUser": null,
+    "accessType": "MASKED",
+    "maskRule": "****",
+    "createdAt": "2026-05-21 12:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
+```
+
+#### DELETE `/v1/data-sources/{dataSourceId}/column-permissions/{id}`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 删除列权限。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改 |
+
+**参数**
+
+| Path | dataSourceId, id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
+```
+
+#### GET `/v1/data-sources/{dataSourceId}/row-permissions`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 行权限列表。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问 |
+
+**参数**
+
+| Path | dataSourceId |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [{
+    "id": "rp-001",
+    "dataSourceId": "ds-001",
+    "targetRole": "VIEWER",
+    "targetDepartment": "Sales",
+    "targetUser": null,
+    "filterCondition": "dept_id = 'SALES'",
+    "priority": 10,
+    "createdAt": "2026-05-21 12:00:00"
+  }]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
+```
+
+#### POST `/v1/data-sources/{dataSourceId}/row-permissions`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 创建行过滤。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改 |
+
+**参数**
+
+| Body | DataRowPermission |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "rp-001",
+    "dataSourceId": "ds-001",
+    "targetRole": "VIEWER",
+    "targetDepartment": "Sales",
+    "targetUser": null,
+    "filterCondition": "dept_id = 'SALES'",
+    "priority": 10,
+    "createdAt": "2026-05-21 12:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
+```
+
+#### DELETE `/v1/data-sources/{dataSourceId}/row-permissions/{id}`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 删除行权限。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 可修改 |
+
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
+```
+
+
+### 11.5 Pipeline（PipelineController）
 
 基础路径：`/v1/pipelines`
 
+
 #### POST `/v1/pipelines`
 
-**请求体 `CreatePipelineRequest`**
+| 项 | 内容 |
+|----|------|
+| **说明** | 创建 Pipeline。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| name | string | Pipeline 名称 |
-| description | string | 描述 |
-| source | SourceConfig | 源配置（见附录） |
-| transforms | Transform[] | 转换节点列表 |
-| sink | SinkConfig | 目标配置 |
-| schedule | ScheduleConfig | 调度配置 |
-| permissionLevel | string | 权限级别字符串 |
-| allowedRoles | string[] | 允许角色（创建请求支持，实体字段部分注释） |
-| allowedUsers | string[] | 允许用户 |
-| allowedDepartments | string[] | 允许部门 |
+**参数**
 
-**响应 data**：`Pipeline` 实体
+| Body | `CreatePipelineRequest` |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | Pipeline ID |
-| name / description | string | 名称与描述 |
-| source / transforms / sink / schedule | object | JSONB 配置 |
-| ownerId | string | 所有者 userId |
-| permissionLevel | enum | PRIVATE / SHARED / PUBLIC |
-| status | string | 如 active |
-| createdAt / updatedAt | datetime | 时间 |
+**响应体**
 
----
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "pl-001",
+    "name": "etl-orders",
+    "description": "订单清洗",
+    "source": {
+      "dataSourceId": "ds-001",
+      "type": "MYSQL",
+      "tableName": "orders"
+    },
+    "transforms": [
+      {
+        "nodeId": "t1",
+        "type": "FIELD_MAPPER",
+        "name": "字段映射",
+        "config": {},
+        "dependsOn": []
+      }
+    ],
+    "sink": {
+      "dataSourceId": "ds-001",
+      "tableName": "orders_clean",
+      "writeMode": "APPEND",
+      "batchSize": 1000
+    },
+    "schedule": {
+      "scheduleType": "MANUAL",
+      "enabled": false,
+      "retryCount": 3,
+      "retryInterval": 60
+    },
+    "ownerId": "u-001",
+    "permissionLevel": "PRIVATE",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
+```
 
 #### GET `/v1/pipelines`
 
-| Query | 类型 | 默认 | 说明 |
-|-------|------|------|------|
-| name | string | — | 代码中**未使用**，仅返回当前用户全部 Pipeline |
-| page | int | 0 | 未实现分页 |
-| size | int | 20 | 未实现分页 |
+| 项 | 内容 |
+|----|------|
+| **说明** | 分页查询可访问 Pipeline。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-**响应 data**：`Pipeline[]`（当前用户的 Pipeline）
+**参数**
 
----
+| Query | name?, page（0）, size（20） |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "content": [{
+    "id": "pl-001",
+    "name": "etl-orders",
+    "description": "订单清洗",
+    "source": {
+      "dataSourceId": "ds-001",
+      "type": "MYSQL",
+      "tableName": "orders"
+    },
+    "transforms": [
+      {
+        "nodeId": "t1",
+        "type": "FIELD_MAPPER",
+        "name": "字段映射",
+        "config": {},
+        "dependsOn": []
+      }
+    ],
+    "sink": {
+      "dataSourceId": "ds-001",
+      "tableName": "orders_clean",
+      "writeMode": "APPEND",
+      "batchSize": 1000
+    },
+    "schedule": {
+      "scheduleType": "MANUAL",
+      "enabled": false,
+      "retryCount": 3,
+      "retryInterval": 60
+    },
+    "ownerId": "u-001",
+    "permissionLevel": "PRIVATE",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines?name=etl&page=0&size=10" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/pipelines/{id}`
 
-Pipeline 详情。
+| 项 | 内容 |
+|----|------|
+| **说明** | Pipeline 详情。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "pl-001",
+    "name": "etl-orders",
+    "description": "订单清洗",
+    "source": {
+      "dataSourceId": "ds-001",
+      "type": "MYSQL",
+      "tableName": "orders"
+    },
+    "transforms": [
+      {
+        "nodeId": "t1",
+        "type": "FIELD_MAPPER",
+        "name": "字段映射",
+        "config": {},
+        "dependsOn": []
+      }
+    ],
+    "sink": {
+      "dataSourceId": "ds-001",
+      "tableName": "orders_clean",
+      "writeMode": "APPEND",
+      "batchSize": 1000
+    },
+    "schedule": {
+      "scheduleType": "MANUAL",
+      "enabled": false,
+      "retryCount": 3,
+      "retryInterval": 60
+    },
+    "ownerId": "u-001",
+    "permissionLevel": "PRIVATE",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+```
 
 #### PUT `/v1/pipelines/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **请求体** | 完整 `Pipeline` JSON |
-| **说明** | 按 ID 更新 Pipeline 配置 |
+| **说明** | 更新 Pipeline。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 修改权 |
 
----
+**参数**
+
+| Body | Pipeline |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "pl-001",
+    "name": "etl-orders",
+    "description": "订单清洗",
+    "source": {
+      "dataSourceId": "ds-001",
+      "type": "MYSQL",
+      "tableName": "orders"
+    },
+    "transforms": [
+      {
+        "nodeId": "t1",
+        "type": "FIELD_MAPPER",
+        "name": "字段映射",
+        "config": {},
+        "dependsOn": []
+      }
+    ],
+    "sink": {
+      "dataSourceId": "ds-001",
+      "tableName": "orders_clean",
+      "writeMode": "APPEND",
+      "batchSize": 1000
+    },
+    "schedule": {
+      "scheduleType": "MANUAL",
+      "enabled": false,
+      "retryCount": 3,
+      "retryInterval": 60
+    },
+    "ownerId": "u-001",
+    "permissionLevel": "PRIVATE",
+    "status": "active",
+    "createdAt": "2026-05-20 10:00:00",
+    "updatedAt": "2026-05-22 08:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders-v2","status":"active"}'
+```
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"description":"updated"}'
+```
 
 #### DELETE `/v1/pipelines/{id}`
 
-删除 Pipeline。
+| 项 | 内容 |
+|----|------|
+| **说明** | 删除 Pipeline。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 删除权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+```
 
 #### POST `/v1/pipelines/{id}/run`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 触发 Pipeline 执行（异步） |
-| **响应 data** | `ExecutionRun`（初始状态多为 PENDING，随后 RUNNING） |
+| **说明** | 异步触发执行。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 执行权 |
 
-**ExecutionRun 字段**
+**参数**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 执行 ID |
-| pipelineId | string | 所属 Pipeline |
-| status | ExecutionStatus | PENDING/RUNNING/SUCCESS/FAILED/CANCELLED |
-| startTime / endTime | datetime | 起止时间 |
-| errorMessage | string | 失败信息 |
-| executionLog | object | JSON 日志 |
-| metrics | object | 指标 JSON |
-| triggeredBy | string | 触发用户 ID |
-| createdAt | datetime | 创建时间 |
+| Path | id |
 
----
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "run-001",
+    "pipelineId": "pl-001",
+    "status": "PENDING",
+    "startTime": "2026-05-22 10:00:00",
+    "endTime": null,
+    "errorMessage": null,
+    "executionLog": {
+      "entries": [
+        {
+          "timestamp": "2026-05-22T10:00:01",
+          "phase": "INIT",
+          "message": "Execution started"
+        }
+      ]
+    },
+    "metrics": {
+      "recordsProcessed": 0,
+      "sourceDurationMs": 0
+    },
+    "triggeredBy": "u-001",
+    "createdAt": "2026-05-22 10:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/pipelines/{id}/runs`
 
-返回该 Pipeline 下所有 `ExecutionRun` 列表。
+| 项 | 内容 |
+|----|------|
+| **说明** | 该 Pipeline 执行历史。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
----
+**参数**
+
+| Path | id |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [{
+    "id": "run-001",
+    "pipelineId": "pl-001",
+    "status": "RUNNING",
+    "startTime": "2026-05-22 10:00:00",
+    "endTime": null,
+    "errorMessage": null,
+    "executionLog": {
+      "entries": [
+        {
+          "timestamp": "2026-05-22T10:00:01",
+          "phase": "INIT",
+          "message": "Execution started"
+        }
+      ]
+    },
+    "metrics": {
+      "recordsProcessed": 0,
+      "sourceDurationMs": 0
+    },
+    "triggeredBy": "u-001",
+    "createdAt": "2026-05-22 10:00:00"
+  }]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/pipelines/{id}/preview`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 预览转换结果（内部 `sampleSize=10`） |
-| **响应 data** | `Map<String, Object>` |
+| **说明** | 采样预览转换（sampleSize=10）。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
----
+**参数**
 
-### 11.5 执行（ExecutionController）
+| Path | id |
 
-基础路径：`/v1/execution`  
-> 注意：单数 **execution**，非 `executions`。
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "sampleSize": 10,
+    "inputRecordCount": 10,
+    "outputRecordCount": 10,
+    "records": [
+      {"id": 1, "amount": 99.5, "amount_mapped": 99.5}
+    ]
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
+```
+
+
+### 11.6 执行（ExecutionController）
+
+基础路径：`/v1/execution`
+
+
+#### GET `/v1/execution/runs`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 按状态分页查询执行记录。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
+
+**参数**
+
+| Query | status?（未传默认 RUNNING）, page, size |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "content": [{
+    "id": "run-001",
+    "pipelineId": "pl-001",
+    "status": "RUNNING",
+    "startTime": "2026-05-22 10:00:00",
+    "endTime": null,
+    "errorMessage": null,
+    "executionLog": {
+      "entries": [
+        {
+          "timestamp": "2026-05-22T10:00:01",
+          "phase": "INIT",
+          "message": "Execution started"
+        }
+      ]
+    },
+    "metrics": {
+      "recordsProcessed": 0,
+      "sourceDurationMs": 0
+    },
+    "triggeredBy": "u-001",
+    "createdAt": "2026-05-22 10:00:00"
+  }],
+    "page": 0,
+    "size": 20,
+    "totalElements": 5,
+    "totalPages": 1
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs?status=SUCCESS&page=0&size=20" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/execution/runs/{runId}`
 
-查询单次执行详情，响应 `ExecutionRun`。
+| 项 | 内容 |
+|----|------|
+| **说明** | 执行详情。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | Pipeline 访问权 |
 
----
+**参数**
+
+| Path | runId |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "id": "run-001",
+    "pipelineId": "pl-001",
+    "status": "SUCCESS",
+    "startTime": "2026-05-22 10:00:00",
+    "endTime": "2026-05-22 10:01:30",
+    "errorMessage": null,
+    "executionLog": {
+      "entries": [
+        {
+          "timestamp": "2026-05-22T10:00:01",
+          "phase": "INIT",
+          "message": "Execution started"
+        }
+      ]
+    },
+    "metrics": {
+      "recordsProcessed": 1000,
+      "sourceDurationMs": 0
+    },
+    "triggeredBy": "u-001",
+    "createdAt": "2026-05-22 10:00:00"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
+```
+
+#### GET `/v1/execution/runs/{runId}/logs`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 执行日志 entries。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
+
+**参数**
+
+| Path | runId |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": [
+    {
+      "timestamp": "2026-05-22T10:00:01",
+      "phase": "SOURCE",
+      "message": "Read 1000 records"
+    },
+    {
+      "timestamp": "2026-05-22T10:00:45",
+      "phase": "SINK",
+      "message": "Wrote 1000 records"
+    }
+  ]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
+```
 
 #### POST `/v1/execution/runs/{runId}/cancel`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 取消正在运行的任务 |
-| **响应** | `ApiResponse<Void>` |
-| **行为** | 设置内存取消标志；若任务已结束可能仅更新 DB 状态 |
+| **说明** | 取消运行中任务。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 执行权 |
 
----
+**参数**
+
+| Path | runId |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+```
 
 #### GET `/v1/execution/pipelines/{pipelineId}/stats`
 
-**响应 data 结构**
+| 项 | 内容 |
+|----|------|
+| **说明** | 执行统计。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 访问权 |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| total | number | 总执行次数 |
-| success | number | 成功次数 |
-| failed | number | 失败次数 |
-| successRate | number | success/total，total=0 时为 0.0 |
+**参数**
 
----
+| Path | pipelineId |
 
-### 11.6 AI 辅助（AIController）
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "total": 10,
+    "success": 8,
+    "failed": 2,
+    "successRate": 0.8
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
+```
+
+
+### 11.7 AI 辅助（AIController）
 
 基础路径：`/v1/ai`
 
+
 #### POST `/v1/ai/generate-transforms`
 
-**请求体 `GenerateTransformsRequest`**
+| 项 | 内容 |
+|----|------|
+| **说明** | LLM 生成节点并写入 ai_helpers。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| instruction | string | 自然语言指令 |
-| context | Context | 可选上下文 |
-| context.sourceSchema | SourceSchema | 源字段 schema |
-| context.targetSchema | TargetSchema | 目标 schema |
-| context.sampleData | object[] | 样本数据行 |
-| options.maxNodes | int | 默认 10 |
-| options.strict | boolean | 默认 true |
+**参数**
 
-**FieldInfo**：`name`, `type`, `sample`
+| Body | `GenerateTransformsRequest` |
 
-**响应 `GenerateTransformsResponse`（data）**
+**响应体**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| nodes | Transform[] | 生成的转换节点 |
-| source.type | string | `historical_pattern` / `llm_generated` |
-| source.confidence | number | 置信度 |
-| source.matchedInstruction | string | 匹配的历史指令 |
-| suggestions[] | type, message | 建议列表 |
-| visualization.summary / dataFlow | string | 可视化摘要 |
-| metadata.processingTimeMs | long | 耗时 |
-| metadata.modelUsed | string | 模型名称 |
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "aiHelperId": "ah-001",
+    "source": {
+      "type": "llm_generated",
+      "confidence": 0.92,
+      "matchedInstruction": null
+    },
+    "nodes": [
+      {
+        "nodeId": "t1",
+        "type": "FIELD_MAPPER",
+        "name": "金额映射",
+        "config": {
+          "mappings": [{"source": "amt", "target": "amount"}]
+        },
+        "dependsOn": [],
+        "generatedBy": "ah-001"
+      }
+    ],
+    "suggestions": [
+      {"type": "info", "message": "建议检查源字段类型是否为 decimal"}
+    ],
+    "visualization": {
+      "summary": "1 个映射节点",
+      "dataFlow": "amt -> amount"
+    },
+    "metadata": {
+      "processingTimeMs": 1250,
+      "modelUsed": "qwen-plus"
+    }
+  }
+}
+```
 
----
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
+```
 
 #### POST `/v1/ai/search-similar`
 
-**请求体 `SearchSimilarRequest`**
+| 项 | 内容 |
+|----|------|
+| **说明** | 向量检索相似指令。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-| 字段 | 类型 | 默认 | 说明 |
-|------|------|------|------|
-| instruction | string | — | 查询文本 |
-| limit | int | 5 | 返回条数上限 |
-| minSimilarity | double | 0.8 | 最小相似度阈值 |
+**参数**
 
-**响应 `SearchSimilarResponse`**
+| Body | instruction, limit?, minSimilarity? |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| results[].instruction | string | 历史指令 |
-| results[].similarity | double | 余弦相似度 |
-| results[].useCount | int | 使用次数（部分为占位 0） |
-| results[].acceptanceRate | double | 采纳率（部分为占位） |
-| results[].generatedNodes | Transform[] | 当时生成的节点 |
+**响应体**
 
----
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "results": [
+      {
+        "instruction": "把金额字段映射为 amount",
+        "similarity": 0.91,
+        "useCount": 12,
+        "acceptanceRate": 0.75,
+        "generatedNodes": [
+          {
+            "nodeId": "t1",
+            "type": "FIELD_MAPPER",
+            "name": "金额映射",
+            "config": {}
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额","limit":5,"minSimilarity":0.75}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额"}'
+```
 
 #### POST `/v1/ai/feedback`
 
-**请求体 `FeedbackRequest`**
+| 项 | 内容 |
+|----|------|
+| **说明** | accept/modify/reject 反馈。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | 已登录 |
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| aiHelperId | string | 是 | `ai_helpers.id` |
-| action | string | 是 | `accept` / `modify` / `reject` |
-| modifiedNodes | Transform[] | 否 | modify 时提交修改后的节点 |
-| pipelineId | string | 否 | 关联 Pipeline |
+**参数**
 
-**响应**：`ApiResponse<Void>`
+| Body | aiHelperId, action, modifiedNodes?, pipelineId? |
 
-**反馈映射**
+**响应体**
 
-| action | userFeedback 存储值 |
-|--------|---------------------|
-| accept | 1 |
-| reject | 0 |
-| modify | -1 |
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": null
+}
+```
 
----
+**示例**
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"accept","pipelineId":"pl-001"}'
+```
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"reject"}'
+```
+
+
+### 11.8 审计日志（AuditLogController）
+
+基础路径：`/v1/audit-logs`
+
+
+#### GET `/v1/audit-logs`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 分页查询审计日志。 |
+| **认证** | 是（Bearer JWT） |
+| **权限** | ROLE_ADMIN |
+
+**参数**
+
+| Query | userId?, action?, start?, end?（ISO-8601）, page, size |
+
+**响应体**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "content": [
+      {
+        "id": 1001,
+        "userId": "u-001",
+        "action": "LOGIN",
+        "resourceType": "USER",
+        "resourceId": "u-001",
+        "details": {"ip": "127.0.0.1"},
+        "ipAddress": "127.0.0.1",
+        "userAgent": "curl/8.0",
+        "createdAt": "2026-05-22 09:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/audit-logs" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/v1/audit-logs?userId=u-001&action=LOGIN&page=0&size=20" -H "Authorization: Bearer $token"
+```
 
 ## 12. Actuator 与文档端点
 
 ### 12.1 Spring Boot Actuator
 
-基础路径：`/api/actuator`（受 context-path 影响）
+基础路径：`/api/actuator`
 
-| 端点 | 方法 | 认证 | 说明 |
-|------|------|------|------|
-| `/api/actuator/health` | GET | 公开 | 健康检查 |
-| `/api/actuator/info` | GET | 需认证* | 应用信息 |
-| `/api/actuator/metrics` | GET | 需认证* | 指标 |
-| `/api/actuator/prometheus` | GET | 需认证* | Prometheus 格式指标 |
+#### GET `/actuator/health`
 
-\* `management.endpoint.health.show-details=when_authorized`；非 health 端点在 Security 中走 `anyRequest().authenticated()`。
+| 项 | 内容 |
+|----|------|
+| **说明** | 应用健康检查 |
+| **认证** | 否 |
+
+**响应体**（Spring Boot 标准格式，非 `ApiResponse`）：
+
+```json
+{"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"}}}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/health"
+```
+
+---
+
+#### GET `/actuator/info`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 应用信息 |
+| **认证** | 是 |
+
+**响应体**（节选）：
+
+```json
+{
+  "app": {
+    "name": "dataflow-ai",
+    "version": "1.0-SNAPSHOT"
+  }
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/info" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/info" -H "Authorization: Bearer $token"
+```
+
+---
+
+#### GET `/actuator/metrics`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | 指标名列表；`/{name}` 查看单项 |
+| **认证** | 是 |
+
+**响应体**（`GET /actuator/metrics`，节选）：
+
+```json
+{
+  "names": [
+    "jvm.memory.used",
+    "dataflow.pipeline.records.processed",
+    "dataflow.pipeline.execution.duration"
+  ]
+}
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/metrics" -H "Authorization: Bearer $token"
+```
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/metrics/dataflow.pipeline.records.processed" -H "Authorization: Bearer $token"
+```
+
+---
+
+#### GET `/actuator/prometheus`
+
+| 项 | 内容 |
+|----|------|
+| **说明** | Prometheus 文本格式 |
+| **认证** | 是 |
+
+**响应体**（`text/plain` 节选）：
+
+```
+# HELP dataflow_pipeline_records_processed_total Records processed
+dataflow_pipeline_records_processed_total 1000.0
+```
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/actuator/prometheus" -H "Authorization: Bearer $token"
+```
+
+---
 
 ### 12.2 API 文档（Knife4j / Swagger）
 
 | 地址 | 说明 |
 |------|------|
-| http://localhost:8080/api/doc.html | Knife4j UI（中文） |
-| http://localhost:8080/api/swagger-ui.html | Swagger UI |
-| http://localhost:8080/api/v3/api-docs | OpenAPI JSON |
+| http://127.0.0.1:8080/api/doc.html | Knife4j UI |
+| http://127.0.0.1:8080/api/swagger-ui.html | Swagger UI |
+| http://127.0.0.1:8080/api/v3/api-docs | OpenAPI JSON |
+
+**示例**
+
+```powershell
+curl "http://127.0.0.1:8080/api/v3/api-docs"
+```
+
+```powershell
+start http://127.0.0.1:8080/api/doc.html
+```
 
 ---
 
@@ -856,40 +2315,13 @@ Pipeline 详情。
 
 `scheduleType`：`MANUAL` | `FIXED_RATE` | `FIXED_DELAY` | `CRON`
 
-### 13.5 接口总览表
+### 13.5 ExecutionRun.status
 
-| # | 方法 | 路径 | 认证 | 权限 | 说明 |
-|---|------|------|------|------|------|
-| 1 | POST | /v1/auth/login | 否 | — | 登录 |
-| 2 | POST | /v1/auth/logout | 否 | — | 登出 |
-| 3 | GET | /v1/users | 是 | ADMIN | 用户列表 |
-| 4 | GET | /v1/users/{id} | 是 | — | 用户详情 |
-| 5 | POST | /v1/users | 是 | ADMIN | 创建用户 |
-| 6 | PUT | /v1/users/{id} | 是 | ADMIN | 更新用户 |
-| 7 | DELETE | /v1/users/{id} | 是 | ADMIN | 删除用户 |
-| 8 | POST | /v1/data-sources | 是 | — | 创建数据源 |
-| 9 | GET | /v1/data-sources | 是 | — | 我的数据源列表 |
-| 10 | GET | /v1/data-sources/{id} | 是 | — | 数据源详情 |
-| 11 | PUT | /v1/data-sources/{id} | 是 | — | 更新数据源 |
-| 12 | DELETE | /v1/data-sources/{id} | 是 | — | 删除数据源 |
-| 13 | POST | /v1/data-sources/{id}/test | 是 | — | 测试连接 |
-| 14 | POST | /v1/data-sources/{id}/preview | 是 | — | 预览数据 |
-| 15 | POST | /v1/pipelines | 是 | — | 创建 Pipeline |
-| 16 | GET | /v1/pipelines | 是 | — | Pipeline 列表 |
-| 17 | GET | /v1/pipelines/{id} | 是 | — | Pipeline 详情 |
-| 18 | PUT | /v1/pipelines/{id} | 是 | — | 更新 Pipeline |
-| 19 | DELETE | /v1/pipelines/{id} | 是 | — | 删除 Pipeline |
-| 20 | POST | /v1/pipelines/{id}/run | 是 | — | 执行 Pipeline |
-| 21 | GET | /v1/pipelines/{id}/runs | 是 | — | 执行历史 |
-| 22 | GET | /v1/pipelines/{id}/preview | 是 | — | 预览转换 |
-| 23 | GET | /v1/execution/runs/{runId} | 是 | — | 执行详情 |
-| 24 | POST | /v1/execution/runs/{runId}/cancel | 是 | — | 取消执行 |
-| 25 | GET | /v1/execution/pipelines/{pipelineId}/stats | 是 | — | 执行统计 |
-| 26 | POST | /v1/ai/generate-transforms | 是 | — | AI 生成节点 |
-| 27 | POST | /v1/ai/search-similar | 是 | — | 相似指令搜索 |
-| 28 | POST | /v1/ai/feedback | 是 | — | AI 反馈 |
+`PENDING` | `RUNNING` | `SUCCESS` | `FAILED` | `CANCELLED`
 
-**合计：28 个业务 REST 接口**（不含 Actuator 与文档静态资源）。
+### 13.6 接口总览（与 §11.0 一致）
+
+共 **39** 个业务 REST + **4** 个 Actuator，详见 [§11.0](#110-接口总览)。
 
 ---
 
@@ -897,12 +2329,10 @@ Pipeline 详情。
 
 | 项 | 说明 |
 |----|------|
-| README 路径 | README 写 `/datasources`、`/executions`，实际为 `data-sources`、`execution` |
-| 分页 | `GET /pipelines` 的 page/size 参数未接入 Repository |
-| 全局异常 | `GlobalExceptionHandler` 为空，错误响应格式不统一 |
-| AI 解析 | ✅ 已实现 `TransformResponseParser`；历史模式匹配等待 TODO-011 |
-| 用户密码 | `GET` 用户接口可能返回 `passwordHash`，生产应使用 DTO 脱敏 |
+| README 路径 | 部分文档写 `/datasources`；实际为 `data-sources` |
+| 执行列表默认状态 | `GET /v1/execution/runs` 未传 `status` 时默认 `RUNNING` |
+| 在线文档 | 以本文 + Knife4j 为准 |
 
 ---
 
-*文档生成自源码分析。在线交互式文档请访问：http://localhost:8080/api/doc.html*
+*文档与源码同步维护（2026-05-22）。交互式调试：http://127.0.0.1:8080/api/doc.html*

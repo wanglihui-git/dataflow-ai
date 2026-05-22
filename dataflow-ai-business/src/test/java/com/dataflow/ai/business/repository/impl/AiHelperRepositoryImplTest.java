@@ -18,6 +18,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * AiHelperRepositoryImpl 向量搜索委托单测（Mock JPA）。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class AiHelperRepositoryImplTest {
 
@@ -27,27 +31,40 @@ class AiHelperRepositoryImplTest {
     @InjectMocks
     private AiHelperRepositoryImpl aiHelperRepository;
 
+    /**
+     * 验证：searchByEmbedding - 转换为 pgvector 字面量并查询。
+     */
     @Test
     @DisplayName("searchByEmbedding - 转换为 pgvector 字面量并查询")
     void searchByEmbedding_delegatesToNativeQuery() {
         float[] embedding = new float[]{1.0f, 0.0f};
+        // 准备：配置 Mock 返回值
         when(jpaRepository.searchByEmbedding(anyString(), anyDouble(), anyInt())).thenReturn(List.of());
 
         aiHelperRepository.searchByEmbedding(embedding, 0.8, 5);
 
+        // 断言：校验响应或交互
         verify(jpaRepository).searchByEmbedding(anyString(), anyDouble(), anyInt());
     }
 
+    /**
+     * 验证：save - 生成 id。
+     */
     @Test
     @DisplayName("save - 生成 id")
     void save_generatesId() {
+        // 准备：配置 Mock 返回值
         when(jpaRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> inv.getArgument(0));
 
         AiHelper saved = aiHelperRepository.save(AiHelper.builder().instruction("x").build());
 
+        // 断言：校验响应或交互
         org.junit.jupiter.api.Assertions.assertNotNull(saved.getId());
     }
 
+    /**
+     * 测试方法 searchByEmbedding_integration。
+     */
     @Test
     @Disabled("待 Testcontainers + pgvector：验证 HNSW 向量检索结果")
     void searchByEmbedding_integration() {

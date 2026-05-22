@@ -15,7 +15,9 @@ import java.lang.annotation.Target;
 @WithSecurityContext(factory = WithMockUserIdSecurityContextFactory.class)
 public @interface WithMockUserId {
 
+    /** 模拟登录用户 ID，写入 Authentication principal */
     String value() default "user-001";
 
+    /** 角色列表，工厂会自动补全 ROLE_ 前缀 */
     String[] roles() default {"DEVELOPER"};
 }

@@ -46,6 +46,9 @@ public class SourceReaderFactory {
     @Resource
     private KafkaSourceReader kafkaSourceReader;
 
+    /**
+     * 启动时注册各 {@link DataSourceType} 与对应 {@link SourceReader} 实现。
+     */
     @PostConstruct
     public void init() {
         readers.put(DataSourceType.MYSQL, databaseSourceReader);

@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OpenAI 兼容 Embeddings API 实现
+ * OpenAI 兼容 Embeddings API 实现（{@code POST /embeddings}）。
+ * <p>适用于 OpenAI、智谱等返回 {@code data[0].embedding} 数组的厂商。
  */
 @Slf4j
 public class OpenAiCompatibleEmbeddingGenerator implements EmbeddingGenerator {
@@ -29,6 +30,14 @@ public class OpenAiCompatibleEmbeddingGenerator implements EmbeddingGenerator {
     private final int dimensions;
     private final String providerLabel;
 
+    /**
+     * @param webClientBuilder WebClient 构建器
+     * @param baseUrl          API 根地址
+     * @param apiKey           API 密钥
+     * @param model            模型名
+     * @param dimensions       期望向量维度（部分模型支持 dimensions 参数）
+     * @param providerLabel    厂商显示名
+     */
     public OpenAiCompatibleEmbeddingGenerator(
             WebClient.Builder webClientBuilder,
             String baseUrl,
@@ -47,6 +56,7 @@ public class OpenAiCompatibleEmbeddingGenerator implements EmbeddingGenerator {
                 .build();
     }
 
+    /** {@inheritDoc} 空文本返回零向量，避免无意义 API 调用。 */
     @Override
     public float[] generateEmbedding(String text) {
         if (apiKey.isBlank()) {
@@ -81,16 +91,19 @@ public class OpenAiCompatibleEmbeddingGenerator implements EmbeddingGenerator {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public int getDimensions() {
         return dimensions;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String getModelName() {
         return model;
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean testConnection() {
         if (apiKey.isBlank()) {
@@ -105,6 +118,12 @@ public class OpenAiCompatibleEmbeddingGenerator implements EmbeddingGenerator {
         }
     }
 
+    /**
+     * 解析响应 JSON 中 {@code data[0].embedding} 为 {@code float[]}。
+     *
+     * @param responseJson 原始响应体
+     * @return 向量数组
+     */
     static float[] parseEmbedding(String responseJson) {
         try {
             JsonNode root = MAPPER.readTree(responseJson);

@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 修改密码请求体。
+ */
 @Data
 @Builder
 @NoArgsConstructor

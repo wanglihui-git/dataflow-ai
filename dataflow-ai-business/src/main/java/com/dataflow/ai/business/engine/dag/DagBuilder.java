@@ -16,15 +16,20 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * DAG构建器
- * 将Transform节点列表转换为DAG结构
+ * DAG 构建器。
+ * <p>将 Pipeline 中的 {@link com.dataflow.ai.domain.vo.Transform} 列表转换为带依赖关系的 DAG，
+ * 支持拓扑排序、分层并行分组及环检测。</p>
  */
 @Slf4j
 @Component
 public class DagBuilder {
 
     /**
-     * 构建DAG
+     * 根据 Transform 列表构建 DAG 节点图（含显式与隐式依赖）。
+     *
+     * @param transforms 转换节点配置列表
+     * @return 节点 ID 到 {@link Node} 的有序映射
+     * @throws ExecutionException 节点 ID 缺失、依赖不存在或存在环时抛出
      */
     public Map<String, Node> build(List<Transform> transforms) {
         if (transforms == null || transforms.isEmpty()) {
@@ -82,16 +87,20 @@ public class DagBuilder {
     }
 
     /**
-     * 检查循环依赖
+     * 使用 DFS 检测图中是否存在环。
+     *
+     * @param nodes 节点映射
+     * @throws ExecutionException 检测到环时抛出
      */
     private void checkForCycle(Map<String, Node> nodes) {
         Set<String> visiting = new HashSet<>();
         Set<String> visited = new HashSet<>();
 
+        // 步骤1：对每个未访问节点启动 DFS
         for (Node node : nodes.values()) {
             if (!visited.contains(node.getId())) {
                 if (node.hasCycle(visiting, visited)) {
-                    // 找到循环
+                    // 步骤2：回溯中发现重复访问节点，判定为环
                     throw new ExecutionException("Circular dependency detected in DAG");
                 }
             }
@@ -101,8 +110,11 @@ public class DagBuilder {
     }
 
     /**
-     * 获取拓扑排序后的节点列表
-     * 使用Kahn算法
+     * 使用 Kahn 算法获取拓扑排序后的节点列表。
+     *
+     * @param nodes 节点映射
+     * @return 拓扑有序节点列表
+     * @throws ExecutionException 排序后节点数少于总数（存在环）时抛出
      */
     public List<Node> topologicalSort(Map<String, Node> nodes) {
         List<Node> sorted = new ArrayList<>();
@@ -147,7 +159,10 @@ public class DagBuilder {
     }
 
     /**
-     * 获取可并行执行的节点组
+     * 按拓扑层级将节点分组，同组内节点可并行执行。
+     *
+     * @param nodes 节点映射
+     * @return 由浅到深的节点层级列表
      */
     public List<List<Node>> getParallelGroup(Map<String, Node> nodes) {
         List<List<Node>> groups = new ArrayList<>();
@@ -179,7 +194,11 @@ public class DagBuilder {
     }
 
     /**
-     * 验证DAG结构的有效性
+     * 校验 DAG：非空 ID、无重复 ID、依赖引用有效且无环。
+     *
+     * @param nodes 节点映射
+     * @throws IllegalArgumentException nodes 为 null
+     * @throws ExecutionException       结构非法时抛出
      */
     public void validate(Map<String, Node> nodes) {
         if (nodes == null) {

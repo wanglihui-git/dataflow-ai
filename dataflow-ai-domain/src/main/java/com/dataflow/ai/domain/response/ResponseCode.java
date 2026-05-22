@@ -2,6 +2,9 @@ package com.dataflow.ai.domain.response;
 
 import lombok.Getter;
 
+/**
+ * API 统一响应状态码枚举。
+ */
 @Getter
 public enum ResponseCode {
 

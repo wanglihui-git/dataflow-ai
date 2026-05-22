@@ -16,12 +16,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 通义千问 DashScope 原生文本向量 API
- * POST /api/v1/services/embeddings/text-embedding/text-embedding
+ * 通义千问 DashScope 原生文本向量 API 客户端。
+ * <p>端点：{@code POST .../embeddings/text-embedding/text-embedding}；
+ * 响应向量位于 {@code output.embeddings[0].embedding}。
  */
 @Slf4j
 public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
 
+    /** 默认 DashScope 文本向量完整 URL */
     public static final String DEFAULT_ENDPOINT =
             "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
 
@@ -34,6 +36,13 @@ public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
     private final String model;
     private final int dimensions;
 
+    /**
+     * @param webClientBuilder WebClient 构建器
+     * @param apiKey           DashScope API Key
+     * @param endpointUrl      完整向量接口 URL，空则使用 {@link #DEFAULT_ENDPOINT}
+     * @param model            模型名
+     * @param dimensions       向量维度（写入 parameters.dimension）
+     */
     public QianwenEmbeddingGenerator(
             WebClient.Builder webClientBuilder,
             String apiKey,
@@ -49,6 +58,7 @@ public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
                 .build();
     }
 
+    /** {@inheritDoc} */
     @Override
     public float[] generateEmbedding(String text) {
         if (apiKey.isBlank()) {
@@ -58,6 +68,7 @@ public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
             return new float[dimensions];
         }
 
+        // DashScope：input.texts 数组 + 可选 parameters.dimension
         ObjectNode body = MAPPER.createObjectNode();
         body.put("model", model);
         ObjectNode input = body.putObject("input");
@@ -88,16 +99,19 @@ public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public int getDimensions() {
         return dimensions;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String getModelName() {
         return model;
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean testConnection() {
         if (apiKey.isBlank()) {
@@ -112,6 +126,12 @@ public class QianwenEmbeddingGenerator implements EmbeddingGenerator {
         }
     }
 
+    /**
+     * 从 DashScope 响应解析 {@code output.embeddings[0].embedding}。
+     *
+     * @param responseJson 原始响应 JSON
+     * @return 向量数组
+     */
     static float[] parseEmbedding(String responseJson) {
         try {
             JsonNode root = MAPPER.readTree(responseJson);

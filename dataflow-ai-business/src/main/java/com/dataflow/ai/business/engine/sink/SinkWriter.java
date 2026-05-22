@@ -45,7 +45,7 @@ public interface SinkWriter {
      * @throws Exception 初始化过程中发生的异常
      */
     default void initialize(SinkConfig sinkConfig, ExecutionContext context) throws Exception {
-        // 默认不执行初始化
+        // 默认实现：子类可按需覆写以建表、清空文件等
     }
 
     /**
@@ -56,6 +56,6 @@ public interface SinkWriter {
      * @throws Exception 清理过程中发生的异常
      */
     default void cleanup(SinkConfig sinkConfig, ExecutionContext context) throws Exception {
-        // 默认不执行清理
+        // 默认实现：子类可按需覆写以关闭连接、刷盘等
     }
 }

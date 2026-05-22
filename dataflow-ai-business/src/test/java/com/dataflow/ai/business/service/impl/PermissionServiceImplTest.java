@@ -10,10 +10,17 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * PermissionServiceImpl 数据源/Pipeline 权限判断单测。
+ */
+
 class PermissionServiceImplTest {
 
     private final PermissionServiceImpl permissionService = new PermissionServiceImpl();
 
+    /**
+     * 验证：hasPipelineAccess - 所有者可访问。
+     */
     @Test
     @DisplayName("hasPipelineAccess - 所有者可访问")
     void hasPipelineAccess_owner() {
@@ -26,6 +33,9 @@ class PermissionServiceImplTest {
         assertTrue(permissionService.hasPipelineAccess(pipeline, user));
     }
 
+    /**
+     * 验证：hasPipelineAccess - PUBLIC 任意用户。
+     */
     @Test
     @DisplayName("hasPipelineAccess - PUBLIC 任意用户")
     void hasPipelineAccess_public() {
@@ -38,6 +48,9 @@ class PermissionServiceImplTest {
         assertTrue(permissionService.hasPipelineAccess(pipeline, user));
     }
 
+    /**
+     * 验证：hasPipelineAccess - PRIVATE 非所有者拒绝。
+     */
     @Test
     @DisplayName("hasPipelineAccess - PRIVATE 非所有者拒绝")
     void hasPipelineAccess_privateDenied() {
@@ -50,6 +63,9 @@ class PermissionServiceImplTest {
         assertFalse(permissionService.hasPipelineAccess(pipeline, user));
     }
 
+    /**
+     * 验证：canAccessDataSource - 创建者可访问。
+     */
     @Test
     @DisplayName("canAccessDataSource - 创建者可访问")
     void canAccessDataSource_owner() {
@@ -58,6 +74,9 @@ class PermissionServiceImplTest {
         assertTrue(permissionService.canAccessDataSource(ds, user));
     }
 
+    /**
+     * 验证：canAccessDataSource - 非创建者拒绝。
+     */
     @Test
     @DisplayName("canAccessDataSource - 非创建者拒绝")
     void canAccessDataSource_denied() {
@@ -66,6 +85,9 @@ class PermissionServiceImplTest {
         assertFalse(permissionService.canAccessDataSource(ds, user));
     }
 
+    /**
+     * 验证：canExecutePipeline - 分析师可执行有权限的 Pipeline。
+     */
     @Test
     @DisplayName("canExecutePipeline - 分析师可执行有权限的 Pipeline")
     void canExecutePipeline_analyst() {

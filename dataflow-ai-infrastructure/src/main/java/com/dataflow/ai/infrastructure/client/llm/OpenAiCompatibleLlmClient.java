@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OpenAI 兼容 Chat Completions API 客户端基类（OpenAI / 智谱 / 通义千问兼容模式）
+ * OpenAI 兼容 Chat Completions API 客户端实现。
+ * <p>适用于 OpenAI、智谱等提供 {@code POST /chat/completions} 的厂商；通过 {@code providerLabel} 区分日志与异常文案。
  */
 @Slf4j
 public class OpenAiCompatibleLlmClient implements LLMClient {
@@ -31,6 +32,15 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
     private final double temperature;
     private final String providerLabel;
 
+    /**
+     * @param webClientBuilder WebClient 构建器
+     * @param apiKey           API 密钥
+     * @param baseUrl          API 根地址（不含尾部斜杠）
+     * @param model            模型名
+     * @param maxTokens        最大生成 token 数
+     * @param temperature      采样温度
+     * @param providerLabel    厂商显示名（日志/异常用）
+     */
     public OpenAiCompatibleLlmClient(
             WebClient.Builder webClientBuilder,
             String apiKey,
@@ -51,16 +61,19 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
                 .build();
     }
 
+    /** {@inheritDoc} 使用 {@link LlmPromptBuilder} 默认系统与用户提示词。 */
     @Override
     public String generateTransforms(String prompt, Map<String, Object> context) {
         return complete(LlmPromptBuilder.SYSTEM_PROMPT, LlmPromptBuilder.buildUserMessage(prompt, context), context);
     }
 
+    /** {@inheritDoc} 组装 messages 数组并调用 {@code /chat/completions}。 */
     @Override
     public String complete(String systemPrompt, String userPrompt, Map<String, Object> context) {
         if (apiKey.isBlank()) {
             throw new LlmApiException(providerLabel + " API key is not configured");
         }
+        // 构建 OpenAI 风格请求体：model、messages、max_tokens、temperature
         ObjectNode body = MAPPER.createObjectNode();
         body.put("model", model);
         body.put("max_tokens", maxTokens);
@@ -76,6 +89,7 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
         user.put("content", userPrompt);
 
         try {
+            // 同步阻塞调用，超时 120 秒
             String response = webClient.post()
                     .uri("/chat/completions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
@@ -95,11 +109,13 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String getModelName() {
         return model;
     }
 
+    /** {@inheritDoc} 发送极简 user 消息探测连通性。 */
     @Override
     public boolean testConnection() {
         if (apiKey.isBlank()) {
@@ -127,6 +143,12 @@ public class OpenAiCompatibleLlmClient implements LLMClient {
         }
     }
 
+    /**
+     * 从 Chat Completions 响应 JSON 中提取 {@code choices[0].message.content}。
+     *
+     * @param responseJson 原始响应体
+     * @return 模型回复正文（trim 后）
+     */
     static String extractChatContent(String responseJson) {
         try {
             JsonNode root = MAPPER.readTree(responseJson);

@@ -32,6 +32,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * AIController 生成/检索/反馈接口测试。
+ */
+
 @WebMvcTest
 @Import({AIController.class, TestSecurityConfig.class})
 @WithMockUserId("user-001")
@@ -51,36 +55,51 @@ class AIControllerTest {
 
     private User user;
 
+    /**
+     * 每个用例执行前初始化 Mock 与测试数据。
+     */
     @BeforeEach
     void setUp() {
         user = User.builder().id("user-001").username("dev").role(UserRole.DEVELOPER).build();
+        // 准备：配置 Mock 返回值
         when(userService.findById("user-001")).thenReturn(Optional.of(user));
     }
 
+    /**
+     * 验证：POST /v1/ai/generate-transforms - 生成（LLM 层为 Mock 实现）。
+     */
     @Test
     @DisplayName("POST /v1/ai/generate-transforms - 生成（LLM 层为 Mock 实现）")
     void generateTransforms_success() throws Exception {
         GenerateTransformsResponse response = GenerateTransformsResponse.builder()
                 .nodes(List.of())
                 .build();
+        // 准备：配置 Mock 返回值
         when(aiService.generateTransforms(any(), any())).thenReturn(response);
 
         GenerateTransformsRequest request = GenerateTransformsRequest.builder()
                 .instruction("将金额字段转为美元")
                 .build();
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/ai/generate-transforms")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
+        // 断言：校验响应或交互
         verify(aiService).generateTransforms(any(), any());
     }
 
+    /**
+     * 验证：POST /v1/ai/search-similar - 相似搜索。
+     */
     @Test
     @DisplayName("POST /v1/ai/search-similar - 相似搜索")
     void searchSimilar_success() throws Exception {
+        // 准备：配置 Mock 返回值
         when(aiService.searchSimilar(any())).thenReturn(
                 SearchSimilarResponse.builder().results(List.of()).build());
 
@@ -88,12 +107,17 @@ class AIControllerTest {
                 .instruction("过滤空值")
                 .build();
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/ai/search-similar")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk());
     }
 
+    /**
+     * 验证：POST /v1/ai/feedback - 反馈。
+     */
     @Test
     @DisplayName("POST /v1/ai/feedback - 反馈")
     void submitFeedback_success() throws Exception {
@@ -102,12 +126,15 @@ class AIControllerTest {
                 .action("accept")
                 .build();
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/ai/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
+        // 断言：校验响应或交互
         verify(aiService).submitFeedback(any(), any());
     }
 }

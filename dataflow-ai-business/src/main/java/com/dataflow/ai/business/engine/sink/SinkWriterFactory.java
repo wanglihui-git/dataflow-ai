@@ -46,6 +46,9 @@ public class SinkWriterFactory {
     @Resource
     private KafkaSinkWriter kafkaSinkWriter;
 
+    /**
+     * 启动时注册各 {@link DataSourceType} 与对应 {@link SinkWriter} 实现。
+     */
     @PostConstruct
     public void init() {
         writers.put(DataSourceType.MYSQL, databaseSinkWriter);

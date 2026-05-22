@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 执行记录 Spring Data JPA 仓储
+ */
 public interface ExecutionRunJpaRepository extends JpaRepository<ExecutionRun, String> {
 
     List<ExecutionRun> findByPipelineId(String pipelineId);

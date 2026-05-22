@@ -19,10 +19,16 @@ public interface RetryStrategy {
     <T> T execute(RetryableOperation<T> operation, int maxAttempts, RetryContext context) throws Exception;
 
     /**
-     * 可重试的操作
+     * 可重试的单次操作。
+     *
+     * @param <T> 返回值类型
      */
     @FunctionalInterface
     interface RetryableOperation<T> {
+        /**
+         * @return 操作结果
+         * @throws Exception 失败时抛出，由策略决定是否重试
+         */
         T execute() throws Exception;
     }
 }

@@ -33,7 +33,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * AI辅助服务实现
+ * {@link AIService} 实现：LLM 生成转换、向量相似检索、历史模式命中与用户反馈学习。
  */
 @Slf4j
 @Service
@@ -49,6 +49,7 @@ public class AIServiceImpl implements AIService {
     @Value("${app.ai.historical-pattern-min-similarity:0.85}")
     private double historicalPatternMinSimilarity;
 
+    /** {@inheritDoc} */
     @Override
     public GenerateTransformsResponse generateTransforms(GenerateTransformsRequest request, User user) {
         log.info("Generating transforms for instruction: {}", request.getInstruction());
@@ -57,6 +58,7 @@ public class AIServiceImpl implements AIService {
         Map<String, Object> context = buildContext(request, user);
         float[] embedding = embeddingClient.generateEmbedding(request.getInstruction());
 
+        // 向量检索历史模式，相似度达标则直接复用模板
         Optional<InstructionPattern> matchedPattern = findHistoricalPattern(embedding);
         if (matchedPattern.isPresent()) {
             return buildHistoricalResponse(request, user, matchedPattern.get(), embedding, context, startMs);
@@ -104,6 +106,7 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
+    /** {@inheritDoc} */
     @Override
     public SearchSimilarResponse searchSimilar(SearchSimilarRequest request) {
         log.info("Searching similar instructions for: {}", request.getInstruction());
@@ -141,6 +144,7 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void submitFeedback(FeedbackRequest request, User user) {
         log.info("Submitting feedback: action={}, aiHelperId={}", request.getAction(), request.getAiHelperId());
@@ -177,6 +181,9 @@ public class AIServiceImpl implements AIService {
         updateInstructionPattern(aiHelper, nodesForPattern, feedbackValue);
     }
 
+    /**
+     * 组装传给 LLM 的上下文（ schema、样本、用户与 Pipeline 关联）。
+     */
     private Map<String, Object> buildContext(GenerateTransformsRequest request, User user) {
         Map<String, Object> context = new HashMap<>();
         if (request.getContext() != null) {
@@ -197,6 +204,12 @@ public class AIServiceImpl implements AIService {
         return context;
     }
 
+    /**
+     * 按配置的最小相似度检索最匹配的一条历史指令模式。
+     *
+     * @param embedding 当前指令向量
+     * @return 命中模式，无则空
+     */
     private Optional<InstructionPattern> findHistoricalPattern(float[] embedding) {
         List<InstructionPattern> patterns = instructionPatternRepository.searchByEmbedding(
                 embedding,
@@ -205,6 +218,9 @@ public class AIServiceImpl implements AIService {
         return patterns.isEmpty() ? Optional.empty() : Optional.of(patterns.get(0));
     }
 
+    /**
+     * 基于历史模式构建响应，并递增模式使用次数。
+     */
     private GenerateTransformsResponse buildHistoricalResponse(
             GenerateTransformsRequest request, User user, InstructionPattern pattern,
             float[] embedding, Map<String, Object> context, long startMs) {
@@ -253,6 +269,13 @@ public class AIServiceImpl implements AIService {
                 .build();
     }
 
+    /**
+     * 根据用户反馈更新或创建 {@link InstructionPattern}（拒绝时降低采纳率）。
+     *
+     * @param aiHelper      AI 辅助记录
+     * @param nodes         用于模板的节点列表
+     * @param feedbackValue 1=接受，0=拒绝，-1=修改
+     */
     private void updateInstructionPattern(AiHelper aiHelper, List<Transform> nodes, int feedbackValue) {
         if (nodes == null || nodes.isEmpty()) {
             return;
@@ -303,6 +326,7 @@ public class AIServiceImpl implements AIService {
         }
     }
 
+    /** 将新向量与历史平均向量按使用次数做滑动平均。 */
     private static float[] mergeEmbedding(float[] avg, int useCount, float[] newEmb) {
         float[] result = new float[newEmb.length];
         for (int i = 0; i < newEmb.length; i++) {
@@ -311,6 +335,7 @@ public class AIServiceImpl implements AIService {
         return result;
     }
 
+    /** 无模式记录时，根据单条 AiHelper 的 userFeedback 估算采纳率。 */
     private static double estimateAcceptanceFromFeedback(AiHelper helper) {
         if (helper.getUserFeedback() == null) {
             return 0.0;

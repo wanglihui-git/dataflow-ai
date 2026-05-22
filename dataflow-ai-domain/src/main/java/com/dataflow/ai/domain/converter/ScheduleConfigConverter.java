@@ -10,6 +10,7 @@ import jakarta.persistence.Converter;
 @Converter
 public class ScheduleConfigConverter extends AbstractJsonConverter<ScheduleConfig> {
 
+    /** {@inheritDoc} */
     @Override
     protected TypeReference<ScheduleConfig> typeReference() {
         return new TypeReference<>() {};

@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
+/**
+ * 字段权限 Spring Data JPA 仓储
+ */
 public interface FieldPermissionJpaRepository extends JpaRepository<DataFieldPermission, String> {
 
     List<DataFieldPermission> findByDataSourceId(String dataSourceId);

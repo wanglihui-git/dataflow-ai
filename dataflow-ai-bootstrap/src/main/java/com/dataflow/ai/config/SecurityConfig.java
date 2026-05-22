@@ -15,7 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * 安全配置
+ * Spring Security 全局配置：无状态 JWT 鉴权、公开路径白名单、401/403 异常处理。
  */
 @Configuration
 @EnableWebSecurity
@@ -25,6 +25,12 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
 
+    /**
+     * 构建安全过滤器链：禁用 CSRF、注册 JWT 过滤器、配置路径授权规则。
+     *
+     * @param http HttpSecurity 构建器
+     * @return 已配置的 SecurityFilterChain
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtProvider);

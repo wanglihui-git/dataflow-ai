@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Pipeline服务实现
+ * {@link PipelineService} 实现：Pipeline CRUD、权限范围查询、执行委托与转换预览。
  */
 @Slf4j
 @Service
@@ -41,16 +41,19 @@ public class PipelineServiceImpl implements PipelineService {
     @Resource
     private UserService userService;
 
+    /** {@inheritDoc} */
     @Override
     public Optional<Pipeline> findById(String id) {
         return pipelineRepository.findById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Pipeline> findByOwnerId(String ownerId) {
         return pipelineRepository.findByOwnerId(ownerId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Pipeline> findByUser(String userId) {
         return userService.findById(userId)
@@ -58,6 +61,7 @@ public class PipelineServiceImpl implements PipelineService {
                 .orElse(List.of());
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResponse<Pipeline> findByUserPage(String userId, String name, org.springframework.data.domain.Pageable pageable) {
         return userService.findById(userId)
@@ -69,6 +73,7 @@ public class PipelineServiceImpl implements PipelineService {
                 .orElse(PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Pipeline createPipeline(CreatePipelineRequest request, String ownerId) {
         Pipeline pipeline = Pipeline.builder()
@@ -91,6 +96,7 @@ public class PipelineServiceImpl implements PipelineService {
         return pipelineRepository.save(pipeline);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Pipeline updatePipeline(String id, Pipeline pipeline) {
         pipeline.setId(id);
@@ -98,11 +104,13 @@ public class PipelineServiceImpl implements PipelineService {
         return pipelineRepository.save(pipeline);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void deletePipeline(String id) {
         pipelineRepository.deleteById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public ExecutionRun executePipeline(String pipelineId, String triggeredBy) {
         Optional<Pipeline> pipelineOpt = pipelineRepository.findById(pipelineId);
@@ -114,21 +122,25 @@ public class PipelineServiceImpl implements PipelineService {
         return run;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void cancelExecution(String runId) {
         executionService.cancelExecution(runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<ExecutionRun> findExecutionRuns(String pipelineId) {
         return executionService.findByPipelineId(pipelineId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<ExecutionRun> findExecutionRunById(String runId) {
         return executionService.findById(runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, Object> previewTransform(Pipeline pipeline, int sampleSize) {
         if (sampleSize <= 0) {
@@ -143,6 +155,7 @@ public class PipelineServiceImpl implements PipelineService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updatePipelineStatus(String id, String status) {
         Optional<Pipeline> pipelineOpt = pipelineRepository.findById(id);
@@ -155,6 +168,12 @@ public class PipelineServiceImpl implements PipelineService {
         pipelineRepository.save(pipeline);
     }
 
+    /**
+     * 将请求中的权限级别字符串解析为枚举，非法或空值时默认为 PRIVATE。
+     *
+     * @param level 权限级别字符串
+     * @return 解析后的 {@link Pipeline.PermissionLevel}
+     */
     private Pipeline.PermissionLevel resolvePermissionLevel(String level) {
         if (level == null || level.isBlank()) {
             return Pipeline.PermissionLevel.PRIVATE;

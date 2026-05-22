@@ -28,7 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 数据源服务实现
+ * {@link DataSourceService} 实现：连接配置加密存储、连接测试与带权限脱敏的预览。
  */
 @Slf4j
 @Service
@@ -50,21 +50,25 @@ public class DataSourceServiceImpl implements DataSourceService {
     @Resource
     private UserRepository userRepository;
 
+    /** {@inheritDoc} */
     @Override
     public Optional<DataSource> findById(String id) {
         return dataSourceRepository.findById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<DataSource> findByCreatedBy(String createdBy) {
         return dataSourceRepository.findByCreatedBy(createdBy);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<DataSource> findAll() {
         return dataSourceRepository.findAll();
     }
 
+    /** {@inheritDoc} */
     @Override
     public DataSource createDataSource(CreateDataSourceRequest request, String createdBy) {
         Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
@@ -80,6 +84,7 @@ public class DataSourceServiceImpl implements DataSourceService {
         return dataSourceRepository.save(dataSource);
     }
 
+    /** {@inheritDoc} */
     @Override
     public DataSource updateDataSource(String id, UpdateDataSourceRequest request) {
         Optional<DataSource> existingOpt = dataSourceRepository.findById(id);
@@ -103,11 +108,13 @@ public class DataSourceServiceImpl implements DataSourceService {
         return dataSourceRepository.save(dataSource);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void deleteDataSource(String id) {
         dataSourceRepository.deleteById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean testConnection(String dataSourceId) {
         DataSource dataSource = dataSourceRepository.findById(dataSourceId)
@@ -117,6 +124,7 @@ public class DataSourceServiceImpl implements DataSourceService {
         return reader.testConnection(dataSource);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, Object> previewSourceData(String dataSourceId, String tableName, String query, int sampleSize) {
         DataSource dataSource = dataSourceRepository.findById(dataSourceId)
@@ -142,6 +150,12 @@ public class DataSourceServiceImpl implements DataSourceService {
         }
     }
 
+    /**
+     * 对预览结果中的 rows 应用列/行级权限脱敏（无登录用户时跳过）。
+     *
+     * @param result       预览结果 Map，原地修改 rows
+     * @param dataSourceId 数据源 ID
+     */
     @SuppressWarnings("unchecked")
     private void applyPreviewPermissions(Map<String, Object> result, String dataSourceId) {
         try {
@@ -162,6 +176,15 @@ public class DataSourceServiceImpl implements DataSourceService {
         }
     }
 
+    /**
+     * 根据表名或自定义 SQL 构建预览用 {@link SourceConfig}。
+     *
+     * @param dataSource 数据源实体
+     * @param tableName  表名，可为 null
+     * @param query      自定义查询，可为 null
+     * @param sampleSize 采样行数（用于 LIMIT）
+     * @return 预览源配置
+     */
     private SourceConfig buildPreviewSourceConfig(DataSource dataSource, String tableName, String query, int sampleSize) {
         SourceConfig.SourceConfigBuilder builder = SourceConfig.builder()
                 .dataSourceId(dataSource.getId())

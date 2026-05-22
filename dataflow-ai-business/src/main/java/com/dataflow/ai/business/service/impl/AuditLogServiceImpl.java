@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * 审计日志服务实现
+ * {@link AuditLogService} 实现：持久化审计记录；分页查询在内存中过滤排序。
  */
 @Slf4j
 @Service
@@ -28,11 +28,13 @@ public class AuditLogServiceImpl implements AuditLogService {
     @Resource
     private AuditLogRepository auditLogRepository;
 
+    /** {@inheritDoc} */
     @Override
     public void log(String userId, String action, String resourceType, String resourceId, Map<String, Object> details) {
         log(userId, action, resourceType, resourceId, details, null, null);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void log(String userId, String action, String resourceType, String resourceId,
                     Map<String, Object> details, String ipAddress, String userAgent) {
@@ -51,9 +53,11 @@ public class AuditLogServiceImpl implements AuditLogService {
                 userId, action, resourceType, resourceId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResponse<AuditLog> findPage(String userId, String action,
                                            LocalDateTime start, LocalDateTime end, Pageable pageable) {
+        // 当前实现为全表加载后在内存过滤（数据量大时宜改为仓储层查询）
         Stream<AuditLog> stream = auditLogRepository.findAll().stream();
         if (userId != null && !userId.isBlank()) {
             stream = stream.filter(a -> userId.equals(a.getUserId()));
@@ -76,21 +80,25 @@ public class AuditLogServiceImpl implements AuditLogService {
         return PageResponse.of(page, pageable.getPageNumber(), pageable.getPageSize(), sorted.size());
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<AuditLog> findByUserId(String userId) {
         return auditLogRepository.findByUserId(userId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<AuditLog> findByTimeRange(LocalDateTime start, LocalDateTime end) {
         return auditLogRepository.findByCreatedAtBetween(start, end);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<AuditLog> findByResource(String resourceType, String resourceId) {
         return auditLogRepository.findByResourceTypeAndResourceId(resourceType, resourceId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public long cleanupExpiredLogs(LocalDateTime beforeTime) {
         log.info("Cleaning up audit logs before: {}", beforeTime);

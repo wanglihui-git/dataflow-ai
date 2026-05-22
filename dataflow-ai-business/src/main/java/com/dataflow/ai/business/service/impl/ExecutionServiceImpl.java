@@ -25,6 +25,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * {@link ExecutionService} 实现：异步调用编排器，维护运行中上下文与取消标志。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,6 +42,7 @@ public class ExecutionServiceImpl implements ExecutionService {
     private final Map<String, ExecutionContext> runningContexts = new ConcurrentHashMap<>();
     private final Map<String, AtomicBoolean> cancelledFlags = new ConcurrentHashMap<>();
 
+    /** {@inheritDoc} */
     @Override
     public ExecutionRun createExecutionRun(String pipelineId, String triggeredBy) {
         ExecutionRun run = ExecutionRun.builder()
@@ -53,6 +57,7 @@ public class ExecutionServiceImpl implements ExecutionService {
         return executionRunRepository.save(run);
     }
 
+    /** {@inheritDoc} */
     @Override
     @Async
     public void startExecution(String runId, Pipeline pipeline) {
@@ -69,6 +74,7 @@ public class ExecutionServiceImpl implements ExecutionService {
             updateExecutionStatus(runId, ExecutionStatus.RUNNING);
             appendExecutionLog(runId, "INIT", "Pipeline execution started: " + pipeline.getName());
 
+            // 构建执行上下文并注册到运行表，供取消时标记
             ExecutionContext context = ExecutionContext.builder()
                     .runId(runId)
                     .pipeline(pipeline)
@@ -81,6 +87,7 @@ public class ExecutionServiceImpl implements ExecutionService {
 
             ExecutionResult result = pipelineOrchestrator.execute(context);
 
+            // 编排结束后再次检查 DB 取消标志
             refreshCancelFlag(runId, cancelledFlag);
 
             if (cancelledFlag.get() || isCancelRequested(runId)) {
@@ -102,6 +109,12 @@ public class ExecutionServiceImpl implements ExecutionService {
         }
     }
 
+    /**
+     * 若数据库已标记取消，则同步内存取消标志并通知运行中的 {@link ExecutionContext}。
+     *
+     * @param runId          执行 ID
+     * @param cancelledFlag  本 run 的内存取消标志
+     */
     private void refreshCancelFlag(String runId, AtomicBoolean cancelledFlag) {
         if (isCancelRequested(runId)) {
             cancelledFlag.set(true);
@@ -112,6 +125,7 @@ public class ExecutionServiceImpl implements ExecutionService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updateExecutionStatus(String runId, ExecutionStatus status) {
         executionRunRepository.findById(runId).ifPresent(run -> {
@@ -120,6 +134,7 @@ public class ExecutionServiceImpl implements ExecutionService {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updateExecutionResult(String runId, ExecutionStatus status, String errorMessage, Map<String, Object> metrics) {
         executionRunRepository.findById(runId).ifPresent(run -> {
@@ -133,6 +148,7 @@ public class ExecutionServiceImpl implements ExecutionService {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public void cancelExecution(String runId) {
         AtomicBoolean cancelledFlag = cancelledFlags.get(runId);
@@ -148,26 +164,31 @@ public class ExecutionServiceImpl implements ExecutionService {
         log.info("Pipeline execution cancel requested: runId={}", runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<ExecutionRun> findById(String runId) {
         return executionRunRepository.findById(runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<ExecutionRun> findByPipelineId(String pipelineId) {
         return executionRunRepository.findByPipelineId(pipelineId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<ExecutionRun> findRunningExecutions() {
         return executionRunRepository.findByStatus(ExecutionStatus.RUNNING, Pageable.unpaged()).getContent();
     }
 
+    /** {@inheritDoc} */
     @Override
     public Page<ExecutionRun> findByStatus(ExecutionStatus status, Pageable pageable) {
         return executionRunRepository.findByStatus(status, pageable);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void appendExecutionLog(String runId, String phase, String message) {
         executionRunRepository.findById(runId).ifPresent(run -> {
@@ -176,6 +197,7 @@ public class ExecutionServiceImpl implements ExecutionService {
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean isCancelRequested(String runId) {
         return executionRunRepository.findById(runId)
@@ -183,6 +205,7 @@ public class ExecutionServiceImpl implements ExecutionService {
                 .orElse(false);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, Object> getExecutionStats(String pipelineId) {
         long total = executionRunRepository.countByPipelineId(pipelineId);

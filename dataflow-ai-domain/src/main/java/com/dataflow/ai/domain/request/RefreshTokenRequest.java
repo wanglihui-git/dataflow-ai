@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 刷新访问令牌请求体。
+ */
 @Data
 @Builder
 @NoArgsConstructor

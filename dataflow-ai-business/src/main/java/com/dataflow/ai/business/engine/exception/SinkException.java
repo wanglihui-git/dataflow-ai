@@ -34,6 +34,11 @@ public class SinkException extends ExecutionException {
      */
     private final Integer batchNumber;
 
+    /**
+     * 仅包含错误消息的构造器。
+     *
+     * @param message 错误描述
+     */
     public SinkException(String message) {
         super(message);
         this.dataSourceId = null;
@@ -43,6 +48,12 @@ public class SinkException extends ExecutionException {
         this.batchNumber = null;
     }
 
+    /**
+     * 包含错误消息与根因的构造器。
+     *
+     * @param message 错误描述
+     * @param cause   根因异常
+     */
     public SinkException(String message, Throwable cause) {
         super(message, cause);
         this.dataSourceId = null;
@@ -52,6 +63,17 @@ public class SinkException extends ExecutionException {
         this.batchNumber = null;
     }
 
+    /**
+     * 绑定执行上下文与 Sink 配置的构造器。
+     *
+     * @param executionId  执行运行 ID
+     * @param pipelineId   Pipeline ID
+     * @param dataSourceId 目标数据源 ID
+     * @param sinkType     目标类型
+     * @param tableName    目标表名
+     * @param writeMode    写入模式
+     * @param message      错误描述
+     */
     public SinkException(String executionId, String pipelineId, String dataSourceId,
                          DataSourceType sinkType, String tableName,
                          SinkConfig.WriteMode writeMode, String message) {
@@ -63,6 +85,18 @@ public class SinkException extends ExecutionException {
         this.batchNumber = null;
     }
 
+    /**
+     * 完整 Sink 上下文并携带根因的构造器。
+     *
+     * @param executionId  执行运行 ID
+     * @param pipelineId   Pipeline ID
+     * @param dataSourceId 目标数据源 ID
+     * @param sinkType     目标类型
+     * @param tableName    目标表名
+     * @param writeMode    写入模式
+     * @param message      错误描述
+     * @param cause        根因异常
+     */
     public SinkException(String executionId, String pipelineId, String dataSourceId,
                          DataSourceType sinkType, String tableName,
                          SinkConfig.WriteMode writeMode, String message, Throwable cause) {

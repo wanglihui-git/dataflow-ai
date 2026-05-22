@@ -24,26 +24,41 @@ public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
 
+    /**
+     * 根据 ID 查询
+     */
     @Override
     public Optional<User> findById(String id) {
         return jpaRepository.findById(id);
     }
 
+    /**
+     * 根据用户名查询
+     */
     @Override
     public Optional<User> findByUsername(String username) {
         return jpaRepository.findByUsername(username);
     }
 
+    /**
+     * 根据邮箱查询
+     */
     @Override
     public Optional<User> findByEmail(String email) {
         return jpaRepository.findByEmail(email);
     }
 
+    /**
+     * 根据角色查询用户列表
+     */
     @Override
     public List<User> findByRole(UserRole role) {
         return jpaRepository.findByRole(role);
     }
 
+    /**
+     * 保存实体
+     */
     @Override
     @Transactional
     public User save(User user) {
@@ -56,17 +71,26 @@ public class UserRepositoryImpl implements UserRepository {
         return jpaRepository.save(user);
     }
 
+    /**
+     * 根据 ID 删除
+     */
     @Override
     @Transactional
     public void deleteById(String id) {
         jpaRepository.deleteById(id);
     }
 
+    /**
+     * 查询全部
+     */
     @Override
     public List<User> findAll() {
         return jpaRepository.findAll();
     }
 
+    /**
+     * 更新用户最后登录时间
+     */
     @Override
     @Transactional
     public void updateLastLoginAt(String userId) {

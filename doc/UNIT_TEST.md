@@ -3,7 +3,7 @@
 > 追踪每个 REST 接口在 **Controller → Service → Repository → JPA** 的调用链，并记录各层测试覆盖状态。  
 > **范围**：后端 Java 模块（不含 `web/` 前端）。  
 > **关联**：[ARCHITECTURE_AND_API.md](./ARCHITECTURE_AND_API.md)、[BACKEND_TODO.md](./BACKEND_TODO.md)  
-> **更新日期**：2026-05-21（P2：权限引擎、分页、JWT、审计、执行日志单测）
+> **更新日期**：2026-05-22（Controller **39/39** 端点覆盖；44 个 `*ControllerTest` 用例全绿）
 
 ---
 
@@ -68,20 +68,20 @@ mvn test
 
 ## 2. 覆盖率汇总
 
-### 2.1 按接口（28 个业务 API）
+### 2.1 按接口（39 个业务 API）
 
 | 层级 | 状态 | 说明 |
 |------|------|------|
-| **Controller** | ✅ **28/28** | 6 个 `*ControllerTest`，Mock Service，覆盖全部端点 |
-| **Service** | 🟡 | 7 个 `*ServiceImplTest`；`AIServiceImplTest` 含 LLM JSON 解析断言 |
-| **Repository** | 🟡 | 5 个 `*RepositoryImplTest`；Mock JpaRepository 委托；向量/SQL 集成 ⏸ |
+| **Controller** | ✅ **39/39** | 8 个 `*ControllerTest`（44 用例），Mock Service + 鉴权支撑 |
+| **Service** | 🟡 | 8+ `*ServiceImplTest`；`DataPermissionService` / `AuditLogService` 有单测 |
+| **Repository** | 🟡 | 5 个 `*RepositoryImplTest`；向量/SQL 集成 ⏸ |
 | **JPA 集成** | ⬜ | 无 `@DataJpaTest` / Testcontainers |
 
 ### 2.2 按模块测试类
 
 | 模块 | 测试类数 | 活跃用例约计 | `@Disabled` |
 |------|----------|--------------|-------------|
-| dataflow-ai-api | 6 Controller + 2 support | ~30 | 0 |
+| dataflow-ai-api | 8 Controller + 2 support | **44** | 0 |
 | dataflow-ai-business | 7 Service + 5 Repository | ~35 | 8 |
 | dataflow-ai-bootstrap | 0 | 0 | — |
 | dataflow-ai-infrastructure | 4 | ~15 | LLM/Embedding/加密 |
@@ -90,12 +90,14 @@ mvn test
 
 | 测试类 | 模块 | 被测类 | 用例 | 备注 |
 |--------|------|--------|------|------|
-| `AuthControllerTest` | api | `AuthController` | 2 | login / logout |
-| `UserControllerTest` | api | `UserController` | 7 | 含 ADMIN 鉴权 |
+| `AuthControllerTest` | api | `AuthController` | 5 | login / refresh（含 400）/ logout |
+| `UserControllerTest` | api | `UserController` | 8 | 含 ADMIN 鉴权、改密 |
 | `DataSourceControllerTest` | api | `DataSourceController` | 7 | `@WithMockUserId` |
 | `PipelineControllerTest` | api | `PipelineController` | 8 | |
-| `ExecutionControllerTest` | api | `ExecutionController` | 3 | |
+| `ExecutionControllerTest` | api | `ExecutionController` | 5 | list / get / logs / cancel / stats |
 | `AIControllerTest` | api | `AIController` | 3 | |
+| `DataPermissionControllerTest` | api | `DataPermissionController` | 6 | 列/行权限 CRUD |
+| `AuditLogControllerTest` | api | `AuditLogController` | 2 | ADMIN 列表 + 403 |
 | `TestSecurityConfig` | api | — | — | WebMvc 安全配置 |
 | `WithMockUserId` | api | — | — | SecurityUtils 兼容 |
 | `UserServiceImplTest` | business | `UserServiceImpl` | 4 | login/create |
@@ -118,21 +120,23 @@ mvn test
 **说明**：
 
 1. `@WebMvcTest` 路径使用 `/v1/...`，与生产 `/api/v1/...` 等价（仅差 context-path）。
-2. 用户不存在等场景仍返回 5xx（`GlobalExceptionHandler` 未实现），Controller 测仅断言 `is5xxServerError()`。
-3. 占位实现（数据源 test/preview、Pipeline preview）的 Service 用例仍可能 `@Disabled`；LLM 解析与加密已有 infrastructure/business 单测。
+2. 未映射异常由 `GlobalExceptionHandler` 返回 `ApiResponse`（HTTP 400/500）；`BusinessException` 为 HTTP 200 + body code。
+3. 数据源 test/preview、Pipeline preview 已有 Service/Controller  happy path；向量与原生 SQL 集成测仍 ⏸。
 
 ---
 
 ## 3. 调用链总览（按 Controller）
 
 ```
-AuthController          → UserService              → UserRepository
-UserController          → UserService              → UserRepository
-DataSourceController    → DataSourceService        → DataSourceRepository
-PipelineController      → PipelineService          → PipelineRepository
-                        → ExecutionService (run)   → ExecutionRunRepository
-ExecutionController     → ExecutionService       → ExecutionRunRepository
-AIController            → AIService + UserService  → AiHelperRepository + UserRepository
+AuthController              → UserService                  → UserRepository + JwtProvider
+UserController              → UserService                  → UserRepository
+DataSourceController        → DataSourceService            → DataSourceRepository
+DataPermissionController    → DataPermissionService        → Field/Row Permission Repository
+PipelineController          → PipelineService              → PipelineRepository
+                            → ExecutionService (run)       → ExecutionRunRepository
+ExecutionController         → ExecutionService + PipelineService + PermissionService
+AIController                → AIService + UserService      → AiHelperRepository
+AuditLogController          → AuditLogService              → AuditLogRepository
 ```
 
 **引擎/基础设施（无独立 REST，但被 Service 间接调用）**：
@@ -156,6 +160,7 @@ AIController            → AIService + UserService  → AiHelperRepository + Us
 |---|------|----------|-----------------|---------|------------|------------|
 | A1 | POST | `/api/v1/auth/login` | `login` | `UserService.login` | `findByUsername` → `updateLastLoginAt` | `UserJpaRepository` + `JwtProvider` + `PasswordEncoder` |
 | A2 | POST | `/api/v1/auth/logout` | `logout` | ➖ 无 | ➖ 无 | ➖ 仅日志 |
+| A3 | POST | `/api/v1/auth/refresh` | `refresh` | `UserService.refreshToken` | ➖ | `JwtProvider` 校验 refreshToken |
 
 #### A1 调用链明细
 
@@ -177,6 +182,20 @@ AuthController.login(LoginRequest)
 | S | ✅ | `UserServiceImplTest`（login） |
 | R | ✅ | `UserRepositoryImplTest`（委托） |
 | J | ⏸ | `UserJpaRepository` 集成待补充 |
+
+#### A3 调用链明细
+
+```
+AuthController.refresh(RefreshTokenRequest)
+  └─ UserServiceImpl.refreshToken(refreshToken)
+       └─ JwtProvider.validateRefreshToken / generateToken
+```
+
+| 层级 | 状态 | 测试类 |
+|------|------|--------|
+| C | ✅ | `AuthControllerTest.refresh_success` |
+| S | ✅ | `UserServiceImplTest`（refresh mock） |
+| R/J | ➖ | — |
 
 #### A2 调用链明细
 
@@ -200,6 +219,7 @@ AuthController.logout() → ApiResponse.ofSuccess()  // 无持久化
 | U3 | POST | `/api/v1/users` | `create` | `createUser` | `save` |
 | U4 | PUT | `/api/v1/users/{id}` | `update` | `updateUser` | `save` |
 | U5 | DELETE | `/api/v1/users/{id}` | `delete` | `deleteUser` | `deleteById` |
+| U6 | PUT | `/api/v1/users/me/password` | `changeMyPassword` | `changePassword` | `findById` + `save` |
 
 #### 各接口调用链
 
@@ -238,6 +258,15 @@ UserController.update(id, User) → user.setId(id) → UserServiceImpl.updateUse
 UserController.delete(id) → UserServiceImpl.deleteUser → UserRepository.deleteById
 ```
 
+**U6 changeMyPassword**
+
+```
+UserController.changeMyPassword(ChangePasswordRequest)
+  → SecurityUtils.getCurrentUserId()
+  → UserServiceImpl.changePassword(userId, oldPassword, newPassword)
+       → findById → PasswordEncoder.matches → encode → save
+```
+
 | # | C | S | R | 测试类 |
 |---|---|---|---|--------|
 | U1 | ✅ | ✅ | ✅ | `UserControllerTest` / `UserServiceImplTest` / `UserRepositoryImplTest` |
@@ -245,12 +274,14 @@ UserController.delete(id) → UserServiceImpl.deleteUser → UserRepository.dele
 | U3 | ✅ | ✅ | ✅ | 同上 |
 | U4 | ✅ | ⬜ | ⬜ | C 已覆盖；S/R 随 update 路径补充 |
 | U5 | ✅ | ⬜ | ⬜ | C 已覆盖 |
+| U6 | ✅ | ✅ | ⬜ | `UserControllerTest.changeMyPassword_success` |
 
-**Service 未暴露但通过 API 间接相关**：
+**Service 与 API 对照（补充）**：
 
 | Service 方法 | 对外 API | 状态 |
 |--------------|----------|------|
-| `changePassword` | 无 | S/R ⬜（待新增 API 后补测） |
+| `changePassword` | U6 | S ✅ `UserServiceImplTest`；C ⬜ |
+| `refreshToken` | A3 | S ✅；C ⬜ |
 | `findByUsername` | 无（login 内部用） | 随 A1 覆盖 |
 
 ---
@@ -319,12 +350,31 @@ updateDataSource(id, request)
 
 ---
 
+### 4.3.1 数据权限 — `DataPermissionController`
+
+| # | 方法 | 完整路径 | Controller | Service | Repository |
+|---|------|----------|------------|---------|------------|
+| DP1 | GET | `/api/v1/data-sources/{dataSourceId}/column-permissions` | `listColumnPermissions` | `listColumnPermissions` | 列权限 JPA |
+| DP2 | POST | `/api/v1/data-sources/{dataSourceId}/column-permissions` | `createColumnPermission` | `saveColumnPermission` | `save` |
+| DP3 | DELETE | `/api/v1/data-sources/{dataSourceId}/column-permissions/{id}` | `deleteColumnPermission` | `deleteColumnPermission` | `deleteById` |
+| DP4 | GET | `/api/v1/data-sources/{dataSourceId}/row-permissions` | `listRowPermissions` | `listRowPermissions` | 行权限 JPA |
+| DP5 | POST | `/api/v1/data-sources/{dataSourceId}/row-permissions` | `createRowPermission` | `saveRowPermission` | `save` |
+| DP6 | DELETE | `/api/v1/data-sources/{dataSourceId}/row-permissions/{id}` | `deleteRowPermission` | `deleteRowPermission` | `deleteById` |
+
+鉴权：`ResourceAuthorizationHelper.requireDataSourceAccess` / `requireDataSourceModify`。
+
+| # | C | S | R | 测试类 |
+|---|---|---|---|--------|
+| DP1–DP6 | ✅ | 🟡 | ⬜ | `DataPermissionControllerTest` |
+
+---
+
 ### 4.4 Pipeline — `PipelineController`
 
 | # | 方法 | 完整路径 | Controller | Service | Repository / 其它 |
 |---|------|----------|------------|---------|---------------------|
 | P1 | POST | `/api/v1/pipelines` | `create` | `createPipeline` | `PipelineRepository.save` |
-| P2 | GET | `/api/v1/pipelines` | `list` | `findByUser` | `findAccessibleByUserId` (native SQL) |
+| P2 | GET | `/api/v1/pipelines` | `list` | `findByUserPage` | `findAccessibleByUserId` (native SQL) |
 | P3 | GET | `/api/v1/pipelines/{id}` | `get` | `findById` | `findById` |
 | P4 | PUT | `/api/v1/pipelines/{id}` | `update` | `updatePipeline` | `save` |
 | P5 | DELETE | `/api/v1/pipelines/{id}` | `delete` | `deletePipeline` | `deleteById` |
@@ -372,6 +422,8 @@ PipelineController.run(id)
 | E1 | GET | `/api/v1/execution/runs/{runId}` | `getRun` | `findById` | `findById` |
 | E2 | POST | `/api/v1/execution/runs/{runId}/cancel` | `cancel` | `cancelExecution` | `findById` + `save`（状态 CANCELLED） |
 | E3 | GET | `/api/v1/execution/pipelines/{pipelineId}/stats` | `getStats` | `getExecutionStats` | `countByPipelineId` ×3 |
+| E4 | GET | `/api/v1/execution/runs` | `listRuns` | `findByStatus` + Page | `findByStatus` |
+| E5 | GET | `/api/v1/execution/runs/{runId}/logs` | `getRunLogs` | `findById` | `ExecutionLogAppender.getEntries` |
 
 #### E2 cancel 链
 
@@ -396,6 +448,8 @@ getExecutionStats(pipelineId)
 | E1 | ✅ | ⬜ | ✅ | `Execution*Test` |
 | E2 | ✅ | ✅ | ⬜ | |
 | E3 | ✅ | ✅ | ✅ | |
+| E4 | ✅ | ⬜ | ⬜ | 默认 status=RUNNING |
+| E5 | ✅ | ⬜ | ➖ | `ExecutionControllerTest.getRunLogs_success` |
 
 ---
 
@@ -451,6 +505,46 @@ AIController.submitFeedback
 
 ---
 
+### 4.7 审计日志 — `AuditLogController`
+
+| # | 方法 | 完整路径 | Controller | Service | Repository |
+|---|------|----------|------------|---------|------------|
+| AL1 | GET | `/api/v1/audit-logs` | `list` | `findPage` | `AuditLogJpaRepository` 条件分页 |
+
+权限：类级 `@PreAuthorize("hasRole('ADMIN')")`。
+
+| 层级 | 状态 | 测试类 |
+|------|------|--------|
+| C | ✅ | `AuditLogControllerTest` |
+| S | ✅ | `AuditLogServiceImplTest` |
+| R | 🟡 | `AuditLogRepositoryImplTest`（若有） |
+
+---
+
+## 4.8 业务 API 与测试对照总表（39）
+
+与 [ARCHITECTURE_AND_API.md §11.0](./ARCHITECTURE_AND_API.md#110-接口总览) 一一对应。
+
+| ID | 方法 | 路径 | C | 测试类 / 备注 |
+|----|------|------|---|----------------|
+| A1 | POST | /v1/auth/login | ✅ | `AuthControllerTest` |
+| A2 | POST | /v1/auth/logout | ✅ | 同上 |
+| A3 | POST | /v1/auth/refresh | ✅ | `AuthControllerTest` |
+| U1 | GET | /v1/users | ✅ | `UserControllerTest` |
+| U2 | GET | /v1/users/{id} | ✅ | 含 5xx 未找到 |
+| U3 | POST | /v1/users | ✅ | ADMIN |
+| U4 | PUT | /v1/users/{id} | ✅ | ADMIN |
+| U5 | DELETE | /v1/users/{id} | ✅ | ADMIN |
+| U6 | PUT | /v1/users/me/password | ✅ | `UserControllerTest` |
+| D1–D7 | * | /v1/data-sources/... | ✅ | `DataSourceControllerTest` |
+| DP1–DP6 | * | .../column-permissions、row-permissions | ✅ | `DataPermissionControllerTest` |
+| P1–P8 | * | /v1/pipelines/... | ✅ | `PipelineControllerTest` |
+| E1–E5 | * | /v1/execution/... | ✅ | `ExecutionControllerTest` |
+| AI1–AI3 | POST | /v1/ai/... | ✅ | `AIControllerTest` |
+| AL1 | GET | /v1/audit-logs | ✅ | `AuditLogControllerTest` |
+
+---
+
 ## 5. Service 方法全覆盖清单（含无 API 方法）
 
 便于 Service 层单测排期，不遗漏「仅有 Service、无 Controller」的方法。
@@ -465,15 +559,15 @@ AIController.submitFeedback
 | | `deleteUser` | U5 | 🟡 | ⬜ |
 | | `findAllUsers` | U1 | 🟡 | ⬜ |
 | | `updateLastLogin` | A1 内部 | ⬜ | ⬜ |
-| | `changePassword` | 无 | ➖ | ⬜ |
-| **DataSourceService** | 全部 8 方法 | D1–D7 | ⬜ | ⬜ |
-| **PipelineService** | 全部 11 方法 | P1–P8 等 | ⬜ | ⬜ |
-| | `cancelExecution` | 无（ExecutionController 直调 ExecutionService） | ➖ | ⬜ |
-| | `updatePipelineStatus` | 无 | ➖ | ⬜ |
-| **ExecutionService** | 全部 9 方法 | E1–E3, P6–P7 | ⬜ | ⬜ |
-| **AIService** | 3 方法 | AI1–AI3 | ⬜ | ⬜ |
-| **PermissionService** | 8 方法 | **无 API** | ➖ | ⬜ |
-| **AuditLogService** | 5 方法 | **无 API** | ➖ | ⬜ |
+| | `changePassword` | U6 | 🟡 | S ✅ C ⬜ |
+| | `refreshToken` | A3 | 🟡 | S ✅ C ⬜ |
+| **DataSourceService** | 8 方法 | D1–D7 | 🟡 | S ✅ 多数 |
+| **DataPermissionService** | 列/行 CRUD | DP1–DP6 | ➖ | S 🟡 |
+| **PipelineService** | 11 方法 | P1–P8 | 🟡 | S ✅ |
+| **ExecutionService** | 9+ 方法 | E1–E5, P6–P7 | 🟡 | S ✅ |
+| **AIService** | 3 方法 | AI1–AI3 | 🟡 | S ✅ |
+| **PermissionService** | 鉴权辅助 | 各 Controller 间接 | ➖ | S ✅ |
+| **AuditLogService** | `findPage` 等 | AL1 | ➖ | S ✅ C ⬜ |
 
 ---
 
@@ -487,7 +581,8 @@ AIController.submitFeedback
 | `ExecutionRunRepository` | `ExecutionRunRepositoryImpl` | `ExecutionRunJpaRepository` | `count*`、`findLatestByPipelineId` |
 | `AiHelperRepository` | `AiHelperRepositoryImpl` | `AiHelperJpaRepository` | **`searchByEmbedding` 向量 SQL** |
 | `AuditLogRepository` | `AuditLogRepositoryImpl` | `AuditLogJpaRepository` | `deleteByCreatedAtBefore` |
-| `FieldPermissionRepository` | `FieldPermissionRepositoryImpl` | `FieldPermissionJpaRepository` | 无 API，权限引擎待实现 |
+| `FieldPermissionRepository` | `FieldPermissionRepositoryImpl` | 列权限表 | DP1–DP3 |
+| `RowPermissionRepository`（或同等） | 实现类 | `data_row_permissions` | DP4–DP6 |
 
 ---
 
@@ -532,9 +627,22 @@ AIController.submitFeedback
 
 | 序号 | 任务 | 关联 |
 |------|------|------|
-| T11 | `PipelineOrchestratorTest`（Mock Reader/Processor/Writer） | P6 |
-| T12 | `JwtProviderTest`；✅ `EncryptionServiceTest` | A1, D1 |
-| T13 | `FieldMapperProcessor` 等 Transform 单测 | 引擎 |
+| T11 | `PipelineOrchestratorTest`（Mock Reader/Processor/Writer） | P6（后续） |
+| T12 | `JwtProviderTest`；✅ `EncryptionServiceTest`（含敏感数字字段） | A1, D1, TODO-040 |
+| T13 | `FieldMapperProcessor` 等 Transform 单测 | 引擎（后续） |
+| T14 | ✅ `ExponentialBackoffRetryTest`、`JdbcConnectionTesterTest` | TODO-035, 034 |
+| T15 | ✅ `GlobalExceptionHandlerTest`、`ZhipuClientConfigurationTest` | TODO-033, 032 |
+| T16 | ✅ `AuthControllerTest` 登录空参 400 | TODO-037 |
+
+### 7.5 P4 — Controller 补缺（已完成 2026-05-22）
+
+| 序号 | 任务 | 关联 |
+|------|------|------|
+| T17 | ✅ `AuthControllerTest` refresh + 400 | A3 |
+| T18 | ✅ `UserControllerTest.changeMyPassword_success` | U6 |
+| T19 | ✅ `DataPermissionControllerTest`（6 端点） | DP1–DP6 |
+| T20 | ✅ `ExecutionControllerTest` list / logs | E4, E5 |
+| T21 | ✅ `AuditLogControllerTest`（ADMIN + 403） | AL1 |
 
 ---
 
@@ -570,6 +678,9 @@ AIController.submitFeedback
 | 2026-05-20 | P0：`TransformResponseParserTest`、`OpenAiCompatibleLlmClientTest`、`OpenAiCompatibleEmbeddingGeneratorTest`、`EncryptionServiceTest`；启用 `AIServiceImplTest.generateTransforms_parsesLlmResponse` |
 | 2026-05-21 | P1：`DataSourceServiceImplTest`（test/preview）、`PipelineServiceImplTest`（preview）、`AIServiceImplTest`（5 用例）、`VectorSimilarityUtilsTest`、`PermissionServiceImplTest`；Controller 鉴权 `ControllerTestAuthSupport` |
 | 2026-05-21 | P2：`PermissionEngineImplTest`、`UserServiceImplTest`（access/refresh）、Pipeline 分页测试；Flyway `V2__p2_pipeline_and_execution.sql` |
+| 2026-05-22 | P3：`ExponentialBackoffRetryTest`、`JdbcConnectionTesterTest`、`GlobalExceptionHandlerTest`、`ZhipuClientConfigurationTest`；`EncryptionServiceTest` 增强；`AuthControllerTest` 登录校验 |
+| 2026-05-22 | API 文档：`ARCHITECTURE_AND_API.md` 39+4 端点全量 JSON 样例；`UNIT_TEST.md` 同步总表 |
+| 2026-05-22 | Controller 补缺：`DataPermissionControllerTest`、`AuditLogControllerTest`；扩展 Auth/User/Execution 测试；**44** 用例全绿 |
 
 ---
 

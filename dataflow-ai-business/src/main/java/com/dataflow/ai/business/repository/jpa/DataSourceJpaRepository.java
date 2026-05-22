@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 数据源 Spring Data JPA 仓储
+ */
 public interface DataSourceJpaRepository extends JpaRepository<DataSource, String> {
 
     List<DataSource> findByCreatedBy(String createdBy);

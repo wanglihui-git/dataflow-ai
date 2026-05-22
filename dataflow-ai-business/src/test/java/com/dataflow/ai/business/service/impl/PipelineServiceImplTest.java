@@ -25,6 +25,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * PipelineServiceImpl 创建、分页与预览单测。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class PipelineServiceImplTest {
 
@@ -40,41 +44,56 @@ class PipelineServiceImplTest {
     @InjectMocks
     private PipelineServiceImpl pipelineService;
 
+    /**
+     * 验证：createPipeline - 保存并设置 owner。
+     */
     @Test
     @DisplayName("createPipeline - 保存并设置 owner")
     void createPipeline_setsOwner() {
+        // 准备：配置 Mock 返回值
         when(pipelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Pipeline pipeline = pipelineService.createPipeline(
                 CreatePipelineRequest.builder().name("p1").build(), "user-001");
 
+        // 断言：校验响应或交互
         assertEquals("user-001", pipeline.getOwnerId());
         verify(pipelineRepository).save(any());
     }
 
+    /**
+     * 验证：executePipeline - 创建 run 并异步启动。
+     */
     @Test
     @DisplayName("executePipeline - 创建 run 并异步启动")
     void executePipeline_createsRunAndStarts() {
         Pipeline pipeline = Pipeline.builder().id("pipe-1").name("p").build();
         ExecutionRun run = ExecutionRun.builder().id("run-1").status(ExecutionStatus.PENDING).build();
+        // 准备：配置 Mock 返回值
         when(pipelineRepository.findById("pipe-1")).thenReturn(Optional.of(pipeline));
         when(executionService.createExecutionRun("pipe-1", "user-001")).thenReturn(run);
 
         ExecutionRun result = pipelineService.executePipeline("pipe-1", "user-001");
 
+        // 断言：校验响应或交互
         assertEquals("run-1", result.getId());
         verify(executionService).startExecution(eq("run-1"), eq(pipeline));
     }
 
+    /**
+     * 验证：previewTransform - 委托 PipelinePreviewExecutor。
+     */
     @Test
     @DisplayName("previewTransform - 委托 PipelinePreviewExecutor")
     void previewTransform_delegatesToExecutor() throws Exception {
         Pipeline pipeline = Pipeline.builder().id("pipe-1").name("p").build();
+        // 准备：配置 Mock 返回值
         when(pipelinePreviewExecutor.preview(pipeline, 10))
                 .thenReturn(Map.of("columns", List.of("id"), "rows", List.of(), "rowCount", 0));
 
         Map<String, Object> result = pipelineService.previewTransform(pipeline, 10);
 
+        // 断言：校验响应或交互
         assertEquals(0, result.get("rowCount"));
         verify(pipelinePreviewExecutor).preview(pipeline, 10);
     }

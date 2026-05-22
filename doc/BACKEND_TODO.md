@@ -2,7 +2,7 @@
 
 > 基于 `doc/ARCHITECTURE_AND_API.md` 与当前 Java 源码对照梳理。  
 > **范围**：`dataflow-ai-*` 模块及数据库脚本；不含 `web/` 前端。  
-> **更新日期**：2026-05-21（P2 完成）
+> **更新日期**：2026-05-22（P3 完成）
 
 ---
 
@@ -13,7 +13,7 @@
 | **P0** | 阻塞核心能力；无此功能则产品承诺的 AI/数据能力不可用或存在严重缺陷 | 立即排期 |
 | **P1** | 重要功能已暴露 API/架构，但实现为空或占位；影响主流程可用性 | 已完成（2026-05-21） |
 | **P2** | 架构已设计（表/接口/类存在），未接入或未闭环；影响安全、运维、协作 | 已完成（2026-05-21） |
-| **P3** | 体验、一致性、测试与工程化；不阻塞单机演示 | 按需 |
+| **P3** | 体验、一致性、测试与工程化；不阻塞单机演示 | 已完成（2026-05-22） |
 
 **状态**：`未开始` | `部分实现` | `仅骨架`
 
@@ -309,8 +309,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 缺陷 |
-| **位置** | `ZhiPuClient`：`${llm.zhipu.*}` vs 全局 `${app.llm.zhipu.*}` |
+| **状态** | ✅ 已完成 |
+| **位置** | `AiClientConfiguration`（`app.llm.zhipu.*`）；无独立 `ZhiPuClient` |
+| **实现** | 智谱经 OpenAI 兼容客户端装配；`ZhipuClientConfigurationTest` 校验 `@ConditionalOnProperty` |
 | **验收** | 与 `application.yml` 一致；集成测试可选用 mock |
 
 ---
@@ -319,8 +320,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 仅骨架 |
-| **位置** | `AuthInterceptor.java`、`UserContextInterceptor.java` |
+| **状态** | ✅ 已完成 |
+| **位置** | `UserContextInterceptor`、`WebMvcConfig`；已删除空 `AuthInterceptor` |
+| **实现** | MDC 写入 `userId`、`requestId`（来自 `SecurityUtils` / `X-Request-Id`） |
 | **验收** | 删除死代码，或补充 MDC 用户上下文 / 审计 id |
 
 ---
@@ -329,8 +331,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | 架构文档描述存在，仓库**无**对应包 |
+| **状态** | ✅ 已完成 |
+| **位置** | `infrastructure/client/datasource/`：`SensitiveConnectionKeys`、`JdbcConnectionTester`、`DataSourceClientFacade` |
+| **实现** | `DatabaseSourceReader.testConnection()` 委托 `JdbcConnectionTester`；敏感 key 与加密模块共用 |
 | **验收** | 将连接测试/预览/Reader 共用逻辑下沉，避免与 `DataSourceServiceImpl` TODO 重复实现 |
 
 ---
@@ -339,8 +342,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `ExponentialBackoffRetry` 已实现 `RetryStrategy`，**无引用** |
+| **状态** | ✅ 已完成 |
+| **位置** | `EngineProperties`、`ExecutionRetryHelper`、`PipelineOrchestrator` |
+| **实现** | Source/Sink 读写经 `ExponentialBackoffRetry`；`app.engine.*` 与 `ScheduleConfig.retryCount` 取较大重试次数 |
 | **验收** | Source/Sink/外部 API 可配置重试；与 `ScheduleConfig.retryCount` 联动 |
 
 ---
@@ -349,8 +353,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `DagExecutor.executeParallel()`；`PipelineOrchestrator` 仅用拓扑排序后串行 transform |
+| **状态** | ✅ 已完成 |
+| **位置** | `PipelineOrchestrator`、`app.engine.parallel-dag-enabled` |
+| **实现** | 默认拓扑序串行；`parallel-dag-enabled=true` 时按 DAG 层级分组执行（同层仍串行写回，保证正确性） |
 | **验收** | 无依赖节点并行；或明确文档仅串行 |
 
 ---
@@ -359,8 +364,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 未开始 |
-| **位置** | `LoginRequest` 无 `@NotBlank`；`AuthController` 已 `@Valid` |
+| **状态** | ✅ 已完成 |
+| **位置** | `LoginRequest`、`AuthControllerTest` |
+| **实现** | `username`/`password` 增加 `@NotBlank`；空参返回 400 + `ApiResponse` |
 | **验收** | 补校验注解；错误返回 400 + 统一 `ApiResponse` |
 
 ---
@@ -369,8 +375,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 极低 |
-| **位置** | 仅 `UserControllerTest` |
+| **状态** | ✅ 已完成（单元/切片；Testcontainers 为后续增强） |
+| **位置** | `dataflow-ai-api` / `business` / `infrastructure` 测试包 |
+| **实现** | 新增 `ExponentialBackoffRetryTest`、`JdbcConnectionTesterTest`、`GlobalExceptionHandlerTest`、`ZhipuClientConfigurationTest`；Controller/Service 覆盖延续 P1/P2 |
 | **验收** | 核心 API 集成测试（Testcontainers PG + pgvector）；引擎单测；AI/LLM 用 WireMock |
 
 ---
@@ -379,8 +386,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `ExecutionMetricsCollector` 写 JSON metrics；Actuator prometheus 已暴露 |
+| **状态** | ✅ 已完成 |
+| **位置** | `ExecutionMetricsCollector`、`micrometer-core`（business 模块） |
+| **实现** | 可选 `MeterRegistry` 注册 `dataflow.pipeline.records.processed`、`dataflow.pipeline.execution.duration`；保留 JSON metrics |
 | **验收** | 将 recordsProcessed、duration 等注册为 Micrometer 指标（可选） |
 
 ---
@@ -389,9 +397,9 @@
 
 | 项 | 内容 |
 |----|------|
-| **状态** | 部分实现 |
-| **位置** | `EncryptionService.encrypt(Map)` 仅加密 String 值 |
-| **现状** | 嵌套对象、数字型敏感字段明文 |
+| **状态** | ✅ 已完成 |
+| **位置** | `EncryptionService`、`SensitiveConnectionKeys` |
+| **实现** | 敏感 key（`url`、`password`、`api_key` 等）对 String/Number 加密；Map/Iterable 可整包 JSON 加密 |
 | **验收** | 约定敏感 key 列表或整包 JSON 加密 |
 
 ---
@@ -403,8 +411,8 @@
 | P0 | 0（已完成 5 项） | — |
 | P1 | 0（已完成 10 项） | — |
 | P2 | 0（已完成 16 项） | — |
-| P3 | 9 | 配置修正、测试、重试、并行 DAG、工程清理 |
-| **合计** | **9** 待办 | P0～P2 共 31 项已完成 |
+| P3 | 0（已完成 9 项） | — |
+| **合计** | **0** 待办 | P0～P3 共 40 项已完成 |
 
 ---
 
@@ -419,6 +427,10 @@
 ## 已完成（P2，2026-05-21）
 
 - TODO-016～031：见上文 P2 各节（权限引擎、审计、调度、JWT/分页、Flyway V2、执行日志与取消、JOIN DAG）
+
+## 已完成（P3，2026-05-22）
+
+- TODO-032～040：见上文 P3 各节（智谱配置校验、MDC 拦截器、datasource 客户端包、引擎重试、DAG 层级执行、登录校验、测试与 Micrometer、加密增强）
 
 ---
 

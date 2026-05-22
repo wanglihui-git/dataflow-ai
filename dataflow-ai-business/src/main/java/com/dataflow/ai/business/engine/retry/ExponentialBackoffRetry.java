@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ExponentialBackoffRetry implements RetryStrategy {
 
+    /**
+     * {@inheritDoc}
+     * <p>失败后在 {@link RetryContext#calculateNextRetryInterval()} 指定间隔后重试，耗尽时抛出 {@link RetryExhaustedException}。</p>
+     */
     @Override
     public <T> T execute(RetryableOperation<T> operation, int maxAttempts, RetryContext context) throws Exception {
         Exception lastException = null;
@@ -38,7 +42,7 @@ public class ExponentialBackoffRetry implements RetryStrategy {
                 log.warn("Operation failed: operationName={}, attempt={}/{}, error={}",
                         context.getOperationName(), attempt, maxAttempts, e.getMessage());
 
-                // 如果不是最后一次尝试，等待后重试
+                // 非最后一次：按指数退避休眠后进入下一轮
                 if (attempt < maxAttempts) {
                     long retryInterval = context.calculateNextRetryInterval();
                     log.info("Retrying in {} ms: operationName={}, attempt={}/{}",

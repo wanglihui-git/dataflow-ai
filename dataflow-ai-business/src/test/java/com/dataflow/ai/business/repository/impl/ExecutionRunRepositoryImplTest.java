@@ -14,6 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * ExecutionRunRepositoryImpl 统计与查询单测。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class ExecutionRunRepositoryImplTest {
 
@@ -23,32 +27,46 @@ class ExecutionRunRepositoryImplTest {
     @InjectMocks
     private ExecutionRunRepositoryImpl executionRunRepository;
 
+    /**
+     * 验证：countByPipelineId - 委托 JPA。
+     */
     @Test
     @DisplayName("countByPipelineId - 委托 JPA")
     void countByPipelineId_delegates() {
+        // 准备：配置 Mock 返回值
         when(jpaRepository.countByPipelineId("pipe-1")).thenReturn(5L);
 
         long count = executionRunRepository.countByPipelineId("pipe-1");
 
+        // 断言：校验响应或交互
         assertEquals(5L, count);
     }
 
+    /**
+     * 验证：findByPipelineIdAndStatus - 委托 JPA。
+     */
     @Test
     @DisplayName("findByPipelineIdAndStatus - 委托 JPA")
     void findByPipelineIdAndStatus_delegates() {
         executionRunRepository.findByPipelineIdAndStatus("pipe-1", ExecutionStatus.RUNNING);
 
+        // 断言：校验响应或交互
         verify(jpaRepository).findByPipelineIdAndStatus("pipe-1", ExecutionStatus.RUNNING);
     }
 
+    /**
+     * 验证：save - 委托 JPA 并生成 id。
+     */
     @Test
     @DisplayName("save - 委托 JPA 并生成 id")
     void save_delegates() {
         ExecutionRun run = ExecutionRun.builder().pipelineId("p").status(ExecutionStatus.PENDING).build();
+        // 准备：配置 Mock 返回值
         when(jpaRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> inv.getArgument(0));
 
         ExecutionRun saved = executionRunRepository.save(run);
 
+        // 断言：校验响应或交互
         org.junit.jupiter.api.Assertions.assertNotNull(saved.getId());
         verify(jpaRepository).save(org.mockito.ArgumentMatchers.any());
     }

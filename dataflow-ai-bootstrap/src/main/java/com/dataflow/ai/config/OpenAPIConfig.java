@@ -7,11 +7,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI配置
+ * OpenAPI 3 / Knife4j 文档元信息配置（标题、版本、联系方式）。
  */
 @Configuration
 public class OpenAPIConfig {
 
+    /**
+     * 注册全局 OpenAPI 文档描述，供 Swagger UI / doc.html 展示。
+     *
+     * @return OpenAPI 根对象
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()

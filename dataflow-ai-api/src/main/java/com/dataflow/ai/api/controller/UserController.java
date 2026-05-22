@@ -19,7 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 用户控制器
+ * 用户管理 REST 控制器。
+ * <p>
+ * 管理员可 CRUD 用户；任意已登录用户可查询详情（按 ID）并修改自己的密码。
+ * 对外返回 {@link UserVO}，不包含密码哈希。
+ * </p>
  */
 @Slf4j
 @RestController
@@ -30,6 +34,11 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 查询全部用户列表（仅管理员）。
+     *
+     * @return 用户 VO 列表
+     */
     @GetMapping
     @Operation(summary = "查询用户列表")
     @PreAuthorize("hasRole('ADMIN')")
@@ -37,6 +46,12 @@ public class UserController {
         return ApiResponse.ofSuccess(UserMapper.toVOList(userService.findAllUsers()));
     }
 
+    /**
+     * 按 ID 查询用户详情。
+     *
+     * @param id 用户 ID
+     * @return 用户 VO；不存在时抛运行时异常（由全局异常处理）
+     */
     @GetMapping("/{id}")
     @Operation(summary = "查询用户详情")
     public ApiResponse<UserVO> get(@PathVariable String id) {
@@ -45,6 +60,12 @@ public class UserController {
         return ApiResponse.ofSuccess(UserMapper.toVO(user));
     }
 
+    /**
+     * 修改当前登录用户的密码。
+     *
+     * @param request 原密码与新密码
+     * @return 成功时 data 为 null
+     */
     @PutMapping("/me/password")
     @Operation(summary = "修改当前用户密码")
     public ApiResponse<Void> changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
@@ -53,6 +74,12 @@ public class UserController {
         return ApiResponse.ofSuccess();
     }
 
+    /**
+     * 创建用户（仅管理员）。
+     *
+     * @param request 用户名、邮箱、密码、角色等
+     * @return 创建后的用户 VO
+     */
     @PostMapping
     @Operation(summary = "创建用户")
     @PreAuthorize("hasRole('ADMIN')")
@@ -68,6 +95,13 @@ public class UserController {
         return ApiResponse.ofSuccess(UserMapper.toVO(user));
     }
 
+    /**
+     * 更新用户（仅管理员）；路径中的 id 会覆盖请求体中的 id。
+     *
+     * @param id   用户 ID
+     * @param user 完整或部分用户实体
+     * @return 更新后的用户 VO
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新用户")
     @PreAuthorize("hasRole('ADMIN')")
@@ -77,6 +111,12 @@ public class UserController {
         return ApiResponse.ofSuccess(UserMapper.toVO(updated));
     }
 
+    /**
+     * 删除用户（仅管理员）。
+     *
+     * @param id 用户 ID
+     * @return 空 data 的成功响应
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除用户")
     @PreAuthorize("hasRole('ADMIN')")

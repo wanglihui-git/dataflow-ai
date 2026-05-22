@@ -37,6 +37,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * DataSourceController 测试，Mock 数据源服务与权限。
+ */
+
 @WebMvcTest
 @Import({DataSourceController.class, TestSecurityConfig.class})
 @WithMockUserId("user-001")
@@ -59,6 +63,9 @@ class DataSourceControllerTest {
 
     private DataSource dataSource;
 
+    /**
+     * 每个用例执行前初始化 Mock 与测试数据。
+     */
     @BeforeEach
     void setUp() {
         ControllerTestAuthSupport.stubAuth(userService, permissionService);
@@ -68,9 +75,13 @@ class DataSourceControllerTest {
                 .type(DataSourceType.MYSQL)
                 .createdBy("user-001")
                 .build();
+        // 准备：配置 Mock 返回值
         when(dataSourceService.findById("ds-001")).thenReturn(Optional.of(dataSource));
     }
 
+    /**
+     * 验证：POST /v1/data-sources - 创建。
+     */
     @Test
     @DisplayName("POST /v1/data-sources - 创建")
     void create_success() throws Exception {
@@ -79,75 +90,113 @@ class DataSourceControllerTest {
                 .type(DataSourceType.MYSQL)
                 .connectionConfig(Map.of("url", "jdbc:mysql://localhost/db"))
                 .build();
+        // 准备：配置 Mock 返回值
         when(dataSourceService.createDataSource(any(), eq("user-001"))).thenReturn(dataSource);
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/data-sources")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value("ds-001"));
     }
 
+    /**
+     * 验证：GET /v1/data-sources - 列表。
+     */
     @Test
     @DisplayName("GET /v1/data-sources - 列表")
     void list_success() throws Exception {
+        // 准备：配置 Mock 返回值
         when(dataSourceService.findByCreatedBy("user-001")).thenReturn(List.of(dataSource));
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(get("/v1/data-sources"))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(1)));
     }
 
+    /**
+     * 验证：GET /v1/data-sources/{id} - 详情。
+     */
     @Test
     @DisplayName("GET /v1/data-sources/{id} - 详情")
     void get_success() throws Exception {
+        // 准备：配置 Mock 返回值
         when(dataSourceService.findById("ds-001")).thenReturn(Optional.of(dataSource));
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(get("/v1/data-sources/ds-001"))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("test-mysql"));
     }
 
+    /**
+     * 验证：PUT /v1/data-sources/{id} - 更新。
+     */
     @Test
     @DisplayName("PUT /v1/data-sources/{id} - 更新")
     void update_success() throws Exception {
         UpdateDataSourceRequest request = UpdateDataSourceRequest.builder().name("renamed").build();
+        // 准备：配置 Mock 返回值
         when(dataSourceService.updateDataSource(eq("ds-001"), any())).thenReturn(dataSource);
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(put("/v1/data-sources/ds-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk());
     }
 
+    /**
+     * 验证：DELETE /v1/data-sources/{id} - 删除。
+     */
     @Test
     @DisplayName("DELETE /v1/data-sources/{id} - 删除")
     void delete_success() throws Exception {
+        // 执行：发起 HTTP 请求
         mockMvc.perform(delete("/v1/data-sources/ds-001"))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk());
 
         verify(dataSourceService).deleteDataSource("ds-001");
     }
 
+    /**
+     * 验证：POST /v1/data-sources/{id}/test - 连接测试（当前 Service 为占位实现）。
+     */
     @Test
     @DisplayName("POST /v1/data-sources/{id}/test - 连接测试（当前 Service 为占位实现）")
     void testConnection_success() throws Exception {
+        // 准备：配置 Mock 返回值
         when(dataSourceService.testConnection("ds-001")).thenReturn(true);
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/data-sources/ds-001/test"))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(true));
     }
 
+    /**
+     * 验证：POST /v1/data-sources/{id}/preview - 预览（当前 Service 为占位实现）。
+     */
     @Test
     @DisplayName("POST /v1/data-sources/{id}/preview - 预览（当前 Service 为占位实现）")
     void preview_success() throws Exception {
+        // 准备：配置 Mock 返回值
         when(dataSourceService.previewSourceData("ds-001", "t1", null, 10))
                 .thenReturn(Map.of());
 
+        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/data-sources/ds-001/preview")
                         .param("tableName", "t1")
                         .param("sampleSize", "10"))
+                // 断言：校验响应或交互
                 .andExpect(status().isOk());
     }
 }

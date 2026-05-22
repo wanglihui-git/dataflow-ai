@@ -33,7 +33,7 @@ public class User {
     private String username;
 
     /**
-     * 邮笱
+     * 邮箱
      */
     @Column(unique = true)
     private String email;

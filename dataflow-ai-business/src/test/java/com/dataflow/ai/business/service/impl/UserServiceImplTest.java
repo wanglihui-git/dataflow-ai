@@ -27,6 +27,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * UserServiceImpl 登录、刷新、改密与用户 CRUD 单测。
+ */
+
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
@@ -42,12 +46,18 @@ class UserServiceImplTest {
     @InjectMocks
     private UserServiceImpl userService;
 
+    /**
+     * 测试方法 injectFieldDependencies。
+     */
     @BeforeEach
     void injectFieldDependencies() {
         // UserServiceImpl 使用 @Resource 注入 userRepository，需手动绑定 Mock
         ReflectionTestUtils.setField(userService, "userRepository", userRepository);
     }
 
+    /**
+     * 验证：login - 成功返回 token。
+     */
     @Test
     @DisplayName("login - 成功返回 token")
     void login_success() {
@@ -58,47 +68,66 @@ class UserServiceImplTest {
                 .role(UserRole.ADMIN)
                 .department("IT")
                 .build();
+        // 准备：配置 Mock 返回值
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret", "hash")).thenReturn(true);
         when(jwtProvider.generateAccessToken("user-001", "admin", "ADMIN")).thenReturn("jwt");
         when(jwtProvider.generateRefreshToken("user-001", "admin", "ADMIN")).thenReturn("refresh");
 
+        // 执行：调用被测方法
         LoginResponse response = userService.login(
                 LoginRequest.builder().username("admin").password("secret").build());
 
+        // 断言：校验响应或交互
         assertEquals("jwt", response.getToken());
         assertEquals("user-001", response.getUserId());
         verify(userRepository).updateLastLoginAt("user-001");
     }
 
+    /**
+     * 验证：login - 用户不存在。
+     */
     @Test
     @DisplayName("login - 用户不存在")
     void login_userNotFound() {
+        // 准备：配置 Mock 返回值
         when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
 
+        // 断言：校验响应或交互
         assertThrows(BusinessException.class, () -> userService.login(
                 LoginRequest.builder().username("nobody").password("x").build()));
     }
 
+    /**
+     * 验证：createUser - 持久化。
+     */
     @Test
     @DisplayName("createUser - 持久化")
     void createUser_savesUser() {
+        // 准备：配置 Mock 返回值
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User created = userService.createUser(
                 "u1", "u1@test.com", "pwd", UserRole.DEVELOPER, "dept");
 
+        // 断言：校验响应或交互
         assertNotNull(created.getId());
         verify(userRepository).save(any(User.class));
     }
 
+    /**
+     * 验证：findById - 委托 Repository。
+     */
     @Test
     @DisplayName("findById - 委托 Repository")
     void findById_delegatesToRepository() {
+        // 准备：配置 Mock 返回值
         when(userRepository.findById("user-001")).thenReturn(Optional.empty());
 
+        // 执行：调用被测方法
         userService.findById("user-001");
 
+        // 断言：校验响应或交互
         verify(userRepository).findById("user-001");
     }
 }

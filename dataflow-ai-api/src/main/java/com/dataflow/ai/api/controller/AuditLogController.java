@@ -14,6 +14,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * 审计日志 REST 控制器。
+ * <p>
+ * 仅 {@code ROLE_ADMIN} 可访问，支持按用户、动作与时间范围分页查询审计记录。
+ * </p>
+ */
 @RestController
 @RequestMapping("/v1/audit-logs")
 @RequiredArgsConstructor
@@ -23,6 +29,17 @@ public class AuditLogController {
 
     private final AuditLogService auditLogService;
 
+    /**
+     * 分页查询审计日志。
+     *
+     * @param userId 按用户 ID 过滤（可选）
+     * @param action 按动作类型过滤（可选）
+     * @param start  开始时间 ISO-8601（可选）
+     * @param end    结束时间 ISO-8601（可选）
+     * @param page   页码
+     * @param size   每页条数
+     * @return 分页的 {@link AuditLog} 列表
+     */
     @GetMapping
     @Operation(summary = "分页查询审计日志")
     public ApiResponse<PageResponse<AuditLog>> list(

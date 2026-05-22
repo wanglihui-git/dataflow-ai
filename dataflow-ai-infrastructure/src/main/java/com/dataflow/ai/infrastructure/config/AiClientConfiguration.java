@@ -14,13 +14,17 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * 按 app.llm.provider / app.embedding.provider 注册 LLM 与 Embedding Bean
+ * AI 客户端 Spring 配置：按 {@code app.llm.provider}、{@code app.embedding.provider}
+ * 条件注册通义千问、OpenAI、智谱等 LLM 与 Embedding 实现 Bean。
  */
 @Configuration
 public class AiClientConfiguration {
 
     // --- LLM ---
 
+    /**
+     * 默认 LLM 客户端：通义千问 DashScope（{@code app.llm.provider=qianwen} 或未配置时生效）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.llm.provider", havingValue = "qianwen", matchIfMissing = true)
@@ -34,6 +38,9 @@ public class AiClientConfiguration {
         return new QianwenLlmClient(webClientBuilder, apiKey, baseUrl, model, maxTokens, temperature);
     }
 
+    /**
+     * OpenAI 兼容 Chat Completions 客户端（{@code app.llm.provider=openai}）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.llm.provider", havingValue = "openai")
@@ -47,6 +54,9 @@ public class AiClientConfiguration {
         return new OpenAiCompatibleLlmClient(webClientBuilder, apiKey, baseUrl, model, maxTokens, temperature, "OpenAI");
     }
 
+    /**
+     * 智谱 AI OpenAI 兼容客户端（{@code app.llm.provider=zhipu}）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.llm.provider", havingValue = "zhipu")
@@ -62,6 +72,9 @@ public class AiClientConfiguration {
 
     // --- Embedding ---
 
+    /**
+     * 默认 Embedding 生成器：通义千问（{@code app.embedding.provider=qianwen} 或未配置时生效）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.embedding.provider", havingValue = "qianwen", matchIfMissing = true)
@@ -74,6 +87,9 @@ public class AiClientConfiguration {
         return new QianwenEmbeddingGenerator(webClientBuilder, apiKey, baseUrl, model, dimensions);
     }
 
+    /**
+     * OpenAI Embeddings 生成器（{@code app.embedding.provider=openai}）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.embedding.provider", havingValue = "openai")
@@ -86,6 +102,9 @@ public class AiClientConfiguration {
         return new OpenAiCompatibleEmbeddingGenerator(webClientBuilder, baseUrl, apiKey, model, dimensions, "OpenAI");
     }
 
+    /**
+     * 智谱 Embeddings 生成器（{@code app.embedding.provider=zhipu}）。
+     */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "app.embedding.provider", havingValue = "zhipu")

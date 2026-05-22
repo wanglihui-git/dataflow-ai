@@ -15,17 +15,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 将 LLM 返回的 JSON 解析为 {@link Transform} 节点列表
+ * 将 LLM 返回的 JSON 文本解析为领域对象 {@link Transform} 节点列表。
+ * <p>兼容根对象为 {@code {"nodes":[...]}} 或直接为数组；自动剥离 Markdown 代码围栏。
  */
 @Component
 public class TransformResponseParser {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /**
+     * 解析 LLM 响应为转换节点列表。
+     *
+     * @param llmResponse 模型返回的 JSON 字符串
+     * @return 转换节点列表
+     * @throws BusinessException 响应为空或 JSON 结构不合法时
+     */
     public List<Transform> parse(String llmResponse) {
         if (llmResponse == null || llmResponse.isBlank()) {
             throw new BusinessException(ResponseCode.CODE_400, "LLM returned empty response");
         }
+        // 1. 去掉 ```json 围栏  2. 定位 nodes 数组  3. 逐节点映射为 Transform
         String json = stripMarkdownFences(llmResponse.trim());
         try {
             JsonNode root = MAPPER.readTree(json);
@@ -59,6 +68,7 @@ public class TransformResponseParser {
         }
         TransformType type;
         try {
+            // 枚举名不区分大小写
             type = TransformType.valueOf(typeStr.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ResponseCode.CODE_400,
@@ -99,10 +109,12 @@ public class TransformResponseParser {
 
     static String stripMarkdownFences(String text) {
         if (text.startsWith("```")) {
+            // 跳过首行 ``` 或 ```json
             int firstNewline = text.indexOf('\n');
             if (firstNewline > 0) {
                 text = text.substring(firstNewline + 1);
             }
+            // 截断末尾 ```
             int endFence = text.lastIndexOf("```");
             if (endFence >= 0) {
                 text = text.substring(0, endFence);

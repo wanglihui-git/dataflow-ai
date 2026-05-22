@@ -11,6 +11,7 @@ import java.util.List;
 @Converter
 public class StringListConverter extends AbstractJsonConverter<List<String>> {
 
+    /** {@inheritDoc} */
     @Override
     protected TypeReference<List<String>> typeReference() {
         return new TypeReference<>() {};

@@ -131,6 +131,11 @@ app:
   schedule:
     poll-interval-ms: ${SCHEDULE_POLL_MS:60000}
 
+  engine:
+    parallel-dag-enabled: ${ENGINE_PARALLEL_DAG:false}
+    default-max-retries: ${ENGINE_DEFAULT_MAX_RETRIES:3}
+    retry-interval-ms: ${ENGINE_RETRY_INTERVAL_MS:1000}
+
   # 异步配置
   async:
     core-pool-size: ${ASYNC_CORE_POOL_SIZE:5}

@@ -16,6 +16,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class TestSecurityConfig {
 
+    /**
+     * 测试用 SecurityFilterChain：放行 /v1/auth/**，其余需认证。
+     *
+     * @param http HttpSecurity 构建器
+     * @return 无 JWT 过滤器的过滤链
+     */
     @Bean
     SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
         http

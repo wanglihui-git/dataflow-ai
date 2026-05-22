@@ -25,11 +25,17 @@ public class FieldPermissionRepositoryImpl implements FieldPermissionRepository 
 
     private final FieldPermissionJpaRepository jpaRepository;
 
+    /**
+     * 根据数据源 ID 查询
+     */
     @Override
     public List<DataFieldPermission> findByDataSourceId(String dataSourceId) {
         return jpaRepository.findByDataSourceId(dataSourceId);
     }
 
+    /**
+     * 查询匹配用户与字段的权限规则
+     */
     @Override
     public List<DataFieldPermission> findMatchingRules(String dataSourceId, String fieldName,
                                                        String userId, String role, String department) {
@@ -40,6 +46,7 @@ public class FieldPermissionRepositoryImpl implements FieldPermissionRepository 
     }
 
     private boolean matchesUser(DataFieldPermission permission, String userId, String role, String department) {
+        // 优先级：指定用户 > 部门 > 角色
         if (permission.getTargetUser() != null && !permission.getTargetUser().isEmpty()) {
             return permission.getTargetUser().equals(userId);
         }
@@ -52,6 +59,9 @@ public class FieldPermissionRepositoryImpl implements FieldPermissionRepository 
         return false;
     }
 
+    /**
+     * 保存实体
+     */
     @Override
     @Transactional
     public DataFieldPermission save(DataFieldPermission permission) {
@@ -64,12 +74,18 @@ public class FieldPermissionRepositoryImpl implements FieldPermissionRepository 
         return jpaRepository.save(permission);
     }
 
+    /**
+     * 根据 ID 删除
+     */
     @Override
     @Transactional
     public void deleteById(String id) {
         jpaRepository.deleteById(id);
     }
 
+    /**
+     * 根据数据源 ID 查询
+     */
     @Override
     public Page<DataFieldPermission> findByDataSourceId(String dataSourceId, Pageable pageable) {
         return jpaRepository.findByDataSourceId(dataSourceId, pageable);

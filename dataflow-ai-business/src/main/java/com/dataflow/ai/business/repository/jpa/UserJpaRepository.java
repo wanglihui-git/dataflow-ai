@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 用户 Spring Data JPA 仓储
+ */
 public interface UserJpaRepository extends JpaRepository<User, String> {
 
     Optional<User> findByUsername(String username);
@@ -19,6 +22,7 @@ public interface UserJpaRepository extends JpaRepository<User, String> {
 
     List<User> findByRole(UserRole role);
 
+    /** 更新用户最后登录时间 */
     @Modifying
     @Query("UPDATE User u SET u.lastLoginAt = :time WHERE u.id = :userId")
     void updateLastLoginAt(@Param("userId") String userId, @Param("time") LocalDateTime time);

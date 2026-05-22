@@ -7,6 +7,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+/**
+ * AI 辅助 Spring Data JPA 仓储
+ */
 public interface AiHelperJpaRepository extends JpaRepository<AiHelper, String> {
 
     List<AiHelper> findByCreatedBy(String createdBy);

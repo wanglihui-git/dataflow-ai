@@ -20,7 +20,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 数据源控制器
+ * 数据源 REST 控制器。
+ * <p>
+ * 管理外部数据连接配置（创建、查询、更新、删除、连通性测试与数据预览）。
+ * 连接配置在 Service 层加密存储；访问与修改需通过 {@link ResourceAuthorizationHelper} 鉴权。
+ * </p>
  */
 @Slf4j
 @RestController
@@ -33,6 +37,12 @@ public class DataSourceController {
     private final UserService userService;
     private final PermissionService permissionService;
 
+    /**
+     * 创建数据源，归属当前登录用户。
+     *
+     * @param request 名称、类型与连接配置
+     * @return 持久化后的数据源实体（连接配置可能为密文）
+     */
     @PostMapping
     @Operation(summary = "创建数据源")
     public ApiResponse<DataSource> create(@RequestBody CreateDataSourceRequest request) {
@@ -42,6 +52,11 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(dataSource);
     }
 
+    /**
+     * 列出当前用户创建的数据源。
+     *
+     * @return 数据源列表
+     */
     @GetMapping
     @Operation(summary = "查询数据源列表")
     public ApiResponse<List<DataSource>> list() {
@@ -50,6 +65,12 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(dataSources);
     }
 
+    /**
+     * 查询数据源详情（需有访问权限）。
+     *
+     * @param id 数据源 ID
+     * @return 数据源实体
+     */
     @GetMapping("/{id}")
     @Operation(summary = "查询数据源详情")
     public ApiResponse<DataSource> get(@PathVariable String id) {
@@ -60,6 +81,12 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(dataSource);
     }
 
+    /**
+     * 删除数据源（需有修改权限）。
+     *
+     * @param id 数据源 ID
+     * @return 空 data 的成功响应
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除数据源")
     public ApiResponse<Void> delete(@PathVariable String id) {
@@ -71,6 +98,13 @@ public class DataSourceController {
         return ApiResponse.ofSuccess();
     }
 
+    /**
+     * 更新数据源（部分字段，需有修改权限）。
+     *
+     * @param id      数据源 ID
+     * @param request 待更新字段
+     * @return 更新后的数据源
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新数据源")
     public ApiResponse<DataSource> update(
@@ -85,6 +119,12 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(dataSource);
     }
 
+    /**
+     * 测试数据源连通性。
+     *
+     * @param id 数据源 ID
+     * @return true 表示连接成功
+     */
     @PostMapping("/{id}/test")
     @Operation(summary = "测试数据源连接")
     public ApiResponse<Boolean> test(@PathVariable String id) {
@@ -96,6 +136,15 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(result);
     }
 
+    /**
+     * 预览源端数据样本。
+     *
+     * @param id         数据源 ID
+     * @param tableName  表名（可选）
+     * @param query      自定义查询（可选）
+     * @param sampleSize 采样条数，默认 10
+     * @return 列信息与样本行等（结构由 Reader 决定）
+     */
     @PostMapping("/{id}/preview")
     @Operation(summary = "预览数据源数据")
     public ApiResponse<Map<String, Object>> preview(
@@ -111,6 +160,11 @@ public class DataSourceController {
         return ApiResponse.ofSuccess(result);
     }
 
+    /**
+     * 加载当前 JWT 对应用户，不存在则抛异常。
+     *
+     * @return 当前用户实体
+     */
     private User requireCurrentUser() {
         return userService.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));

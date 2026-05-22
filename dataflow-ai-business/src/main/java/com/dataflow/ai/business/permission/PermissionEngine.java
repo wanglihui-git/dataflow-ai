@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 权限引擎 - 核心接口
- * 负责字段级权限的解析和脱敏
+ * 数据权限引擎接口。
+ * <p>对查询/预览结果应用列级脱敏、隐藏及行级过滤规则。</p>
  */
 public interface PermissionEngine {
 

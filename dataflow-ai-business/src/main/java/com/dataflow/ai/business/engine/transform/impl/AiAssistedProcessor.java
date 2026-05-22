@@ -30,6 +30,14 @@ public class AiAssistedProcessor implements TransformProcessor {
     private final LLMClient llmClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 处理数据批次，执行本转换节点的业务逻辑。
+     *
+     * @param batch   输入数据批次
+     * @param context 转换上下文（含节点配置与共享状态）
+     * @return 处理后的数据批次
+     * @throws Exception 配置无效或处理失败时抛出
+     */
     @Override
     public DataBatch process(DataBatch batch, TransformContext context) throws Exception {
         log.debug("Processing AI-Assisted transform: nodeId={}, batchId={}",
@@ -78,6 +86,11 @@ public class AiAssistedProcessor implements TransformProcessor {
                 .build();
     }
 
+    /**
+     * 返回本处理器支持的转换类型标识。
+     *
+     * @return 转换类型名称
+     */
     @Override
     public String getSupportedType() {
         return "AI_ASSISTED";
@@ -85,12 +98,14 @@ public class AiAssistedProcessor implements TransformProcessor {
 
     private Object callAiForRecord(Record record, String prompt, int maxRetries, TransformContext context)
             throws Exception {
+        // 步骤1：拼装用户消息（提示词 + 行 JSON）
         String userMessage = prompt + "\n\nRecord JSON:\n" + record.toJson();
         Map<String, Object> llmContext = Map.of("recordId", record.getId());
 
         Exception lastException = null;
         for (int i = 0; i < maxRetries; i++) {
             try {
+                // 步骤2：调用 LLM 并解析为 Map 或原始字符串
                 String response = llmClient.complete(
                         RowTransformPromptBuilder.SYSTEM_PROMPT, userMessage, llmContext);
                 return parseRowTransformResponse(response);
@@ -110,6 +125,7 @@ public class AiAssistedProcessor implements TransformProcessor {
     }
 
     private Object parseRowTransformResponse(String response) throws Exception {
+        // 步骤1：去除 Markdown 代码块包裹
         String json = response.trim();
         if (json.startsWith("```")) {
             int start = json.indexOf('\n');
@@ -122,6 +138,7 @@ public class AiAssistedProcessor implements TransformProcessor {
             }
             json = json.trim();
         }
+        // 步骤2：优先解析为 JSON 对象，失败则退回原始文本
         try {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {

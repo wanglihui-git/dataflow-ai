@@ -6,7 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Embedding 门面，委托给按配置注入的 {@link EmbeddingGenerator}
+ * 文本向量化门面：委托给按 {@code app.embedding.provider} 注入的 {@link EmbeddingGenerator}，
+ * 并提供本地余弦相似度计算（用于 AI 辅助检索等）。
  */
 @Slf4j
 @Component
@@ -15,20 +16,40 @@ public class EmbeddingClient {
 
     private final EmbeddingGenerator embeddingGenerator;
 
+    /**
+     * 将文本编码为浮点向量。
+     *
+     * @param text 输入文本
+     * @return 与配置维度一致的 embedding
+     */
     public float[] generateEmbedding(String text) {
         return embeddingGenerator.generateEmbedding(text);
     }
 
+    /**
+     * 当前模型输出的向量维度。
+     *
+     * @return 维度数
+     */
     public int getDimensions() {
         return embeddingGenerator.getDimensions();
     }
 
+    /**
+     * 当前使用的 Embedding 模型名称。
+     *
+     * @return 模型标识
+     */
     public String getModelName() {
         return embeddingGenerator.getModelName();
     }
 
     /**
-     * 计算两个向量的余弦相似度
+     * 计算两个等长向量的余弦相似度（范围约 [-1, 1]，零向量时返回 0）。
+     *
+     * @param vec1 向量一
+     * @param vec2 向量二
+     * @return 余弦相似度
      */
     public double cosineSimilarity(float[] vec1, float[] vec2) {
         if (vec1 == null || vec2 == null) {
@@ -43,6 +64,7 @@ public class EmbeddingClient {
         double norm1 = 0.0;
         double norm2 = 0.0;
 
+        // 累加点积与各自 L2 范数平方
         for (int i = 0; i < vec1.length; i++) {
             dotProduct += vec1[i] * vec2[i];
             norm1 += vec1[i] * vec1[i];

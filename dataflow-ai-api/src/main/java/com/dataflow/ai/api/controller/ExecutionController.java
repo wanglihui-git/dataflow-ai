@@ -24,6 +24,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Pipeline 执行 REST 控制器。
+ * <p>
+ * 提供执行记录分页查询、详情、日志条目、取消运行及按 Pipeline 聚合统计。
+ * 访问执行记录前会校验用户对所属 Pipeline 的权限。
+ * </p>
+ */
 @Slf4j
 @RestController
 @RequestMapping("/v1/execution")
@@ -36,6 +43,15 @@ public class ExecutionController {
     private final UserService userService;
     private final PermissionService permissionService;
 
+    /**
+     * 按状态分页查询执行记录。
+     * <p>未传 {@code status} 时默认筛选 {@link ExecutionStatus#RUNNING}。</p>
+     *
+     * @param status 执行状态过滤（可选）
+     * @param page   页码
+     * @param size   每页大小
+     * @return 分页的 {@link ExecutionRun} 列表
+     */
     @GetMapping("/runs")
     @Operation(summary = "分页查询执行记录")
     public ApiResponse<PageResponse<ExecutionRun>> listRuns(
@@ -48,6 +64,12 @@ public class ExecutionController {
                 result.getContent(), result.getNumber(), result.getSize(), result.getTotalElements()));
     }
 
+    /**
+     * 查询单次执行详情。
+     *
+     * @param runId 执行记录 ID
+     * @return {@link ExecutionRun} 含状态、指标与日志 JSON
+     */
     @GetMapping("/runs/{runId}")
     @Operation(summary = "查询执行记录详情")
     public ApiResponse<ExecutionRun> getRun(@PathVariable String runId) {
@@ -60,6 +82,12 @@ public class ExecutionController {
         return ApiResponse.ofSuccess(run);
     }
 
+    /**
+     * 查询执行过程日志条目（从 executionLog.entries 解析）。
+     *
+     * @param runId 执行记录 ID
+     * @return 日志条目列表，每项含 timestamp、phase、message
+     */
     @GetMapping("/runs/{runId}/logs")
     @Operation(summary = "查询执行日志")
     public ApiResponse<List<Map<String, Object>>> getRunLogs(@PathVariable String runId) {
@@ -72,6 +100,12 @@ public class ExecutionController {
         return ApiResponse.ofSuccess(ExecutionLogAppender.getEntries(run));
     }
 
+    /**
+     * 取消正在运行或待处理的执行。
+     *
+     * @param runId 执行记录 ID
+     * @return 空 data 的成功响应
+     */
     @PostMapping("/runs/{runId}/cancel")
     @Operation(summary = "取消执行")
     public ApiResponse<Void> cancel(@PathVariable String runId) {
@@ -80,11 +114,18 @@ public class ExecutionController {
         User user = requireCurrentUser();
         Pipeline pipeline = pipelineService.findById(run.getPipelineId())
                 .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
+        // 取消需要执行权（与触发 run 同级）
         ResourceAuthorizationHelper.requirePipelineExecute(pipeline, user, permissionService);
         executionService.cancelExecution(runId);
         return ApiResponse.ofSuccess();
     }
 
+    /**
+     * 统计指定 Pipeline 的执行次数与成功率。
+     *
+     * @param pipelineId Pipeline ID
+     * @return total、success、failed、successRate
+     */
     @GetMapping("/pipelines/{pipelineId}/stats")
     @Operation(summary = "获取Pipeline执行统计")
     public ApiResponse<Map<String, Object>> getStats(@PathVariable String pipelineId) {
@@ -95,6 +136,11 @@ public class ExecutionController {
         return ApiResponse.ofSuccess(executionService.getExecutionStats(pipelineId));
     }
 
+    /**
+     * 获取当前登录用户。
+     *
+     * @return 用户实体
+     */
     private User requireCurrentUser() {
         return userService.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
