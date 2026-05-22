@@ -3,7 +3,7 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
@@ -31,7 +31,7 @@ import java.util.Properties;
 public class KafkaSinkWriter implements SinkWriter {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
@@ -54,7 +54,7 @@ public class KafkaSinkWriter implements SinkWriter {
         log.info("Writing to Kafka sink: dataSourceId={}, batchSize={}", dataSourceId, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceService.findById(dataSourceId)
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.KAFKA, null, null,

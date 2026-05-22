@@ -7,6 +7,7 @@ import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
+import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 /**
  * DataSourceServiceImpl 创建、连接测试与预览单测。
@@ -73,6 +75,46 @@ class DataSourceServiceImplTest {
         // 断言：校验响应或交互
         verify(encryptionService).encrypt(anyMap());
         verify(dataSourceRepository).save(any());
+    }
+
+    /**
+     * 验证：updateDataSource - 部分 connectionConfig 与已有配置合并后再加密。
+     */
+    @Test
+    @DisplayName("updateDataSource - 部分 connectionConfig 合并")
+    void updateDataSource_partialConnectionConfig_mergesWithExisting() {
+        Map<String, Object> storedEncrypted = Map.of("host", "enc-host", "password", "enc-pwd");
+        DataSource existing = DataSource.builder()
+                .id("ds-1")
+                .name("mysql-demo")
+                .type(DataSourceType.MYSQL)
+                .connectionConfig(storedEncrypted)
+                .build();
+        Map<String, Object> existingPlain = new java.util.HashMap<>(Map.of(
+                "host", "127.0.0.1",
+                "port", 3306,
+                "database", "demo",
+                "username", "root",
+                "password", "111111"));
+        when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(existing));
+        when(encryptionService.decrypt(storedEncrypted)).thenReturn(existingPlain);
+        when(encryptionService.encrypt(anyMap())).thenAnswer(inv -> inv.getArgument(0));
+        when(dataSourceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        dataSourceService.updateDataSource("ds-1",
+                UpdateDataSourceRequest.builder()
+                        .connectionConfig(Map.of("password", "123456"))
+                        .build());
+
+        ArgumentCaptor<Map<String, Object>> encryptCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(encryptionService).decrypt(storedEncrypted);
+        verify(encryptionService).encrypt(encryptCaptor.capture());
+        Map<String, Object> merged = encryptCaptor.getValue();
+        assertEquals("127.0.0.1", merged.get("host"));
+        assertEquals(3306, merged.get("port"));
+        assertEquals("demo", merged.get("database"));
+        assertEquals("root", merged.get("username"));
+        assertEquals("123456", merged.get("password"));
     }
 
     /**

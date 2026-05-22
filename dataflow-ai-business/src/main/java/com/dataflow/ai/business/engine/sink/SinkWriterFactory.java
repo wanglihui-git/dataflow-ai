@@ -5,7 +5,7 @@ import com.dataflow.ai.business.engine.sink.impl.ApiSinkWriter;
 import com.dataflow.ai.business.engine.sink.impl.CsvSinkWriter;
 import com.dataflow.ai.business.engine.sink.impl.DatabaseSinkWriter;
 import com.dataflow.ai.business.engine.sink.impl.KafkaSinkWriter;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -27,7 +27,7 @@ import java.util.Optional;
 public class SinkWriterFactory {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
@@ -83,7 +83,7 @@ public class SinkWriterFactory {
      * 根据数据源ID创建写入器
      */
     public SinkWriter createWriterByDataSourceId(String dataSourceId) {
-        Optional<DataSource> dataSourceOpt = dataSourceService.findById(dataSourceId);
+        Optional<DataSource> dataSourceOpt = dataSourceRepository.findById(dataSourceId);
         if (dataSourceOpt.isEmpty()) {
             throw new SinkException("Data source not found: " + dataSourceId);
         }
@@ -94,7 +94,7 @@ public class SinkWriterFactory {
      * 根据数据源ID获取数据源
      */
     public Optional<DataSource> getDataSourceById(String dataSourceId) {
-        return dataSourceService.findById(dataSourceId);
+        return dataSourceRepository.findById(dataSourceId);
     }
 
     /**

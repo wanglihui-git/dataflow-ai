@@ -2,6 +2,7 @@ package com.dataflow.ai.business.service.impl;
 
 import com.dataflow.ai.domain.exception.BusinessException;
 import com.dataflow.ai.domain.request.LoginRequest;
+import com.dataflow.ai.domain.request.UpdateUserRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.domain.response.ResponseCode;
 import com.dataflow.ai.business.repository.UserRepository;
@@ -118,8 +119,25 @@ public class UserServiceImpl implements UserService {
 
     /** {@inheritDoc} */
     @Override
-    public User updateUser(User user) {
-        return userRepository.save(user);
+    public User updateUser(String id, UpdateUserRequest request) {
+        User existing = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ResponseCode.CODE_404, "用户不存在"));
+        if (request.getUsername() != null) {
+            existing.setUsername(request.getUsername());
+        }
+        if (request.getEmail() != null) {
+            existing.setEmail(request.getEmail());
+        }
+        if (request.getRole() != null) {
+            existing.setRole(request.getRole());
+        }
+        if (request.getDepartment() != null) {
+            existing.setDepartment(request.getDepartment());
+        }
+        if (request.getStatus() != null) {
+            existing.setStatus(request.getStatus());
+        }
+        return userRepository.save(existing);
     }
 
     /** {@inheritDoc} */

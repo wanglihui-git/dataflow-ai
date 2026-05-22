@@ -1,6 +1,7 @@
 package com.dataflow.ai.business.service;
 
 import com.dataflow.ai.domain.request.LoginRequest;
+import com.dataflow.ai.domain.request.UpdateUserRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
@@ -51,12 +52,13 @@ public interface UserService {
     User createUser(String username, String email, String passwordHash, UserRole role, String department);
 
     /**
-     * 更新用户信息（全量 save）。
+     * 按 ID 部分更新用户；仅 {@link UpdateUserRequest} 中非 null 字段会覆盖原值。
      *
-     * @param user 含 ID 的用户实体
+     * @param id      用户 ID
+     * @param request 待更新字段
      * @return 更新后的用户
      */
-    User updateUser(User user);
+    User updateUser(String id, UpdateUserRequest request);
 
     /**
      * 按 ID 删除用户。

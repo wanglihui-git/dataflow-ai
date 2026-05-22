@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 7681
   servlet:
     context-path: /api
     encoding:
@@ -106,7 +106,7 @@ app:
     qianwen:
       api-key: ${QIANWEN_API_KEY:${DASHSCOPE_API_KEY:}}
       base-url: ${QIANWEN_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}
-      model: ${QIANWEN_EMBEDDING_MODEL:text-embedding-v3}
+      model: ${QIANWEN_EMBEDDING_MODEL:text-embedding-v4}
       dimensions: ${QIANWEN_EMBEDDING_DIMENSIONS:1024}
     openai:
       api-key: ${OPENAI_API_KEY:}

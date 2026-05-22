@@ -89,10 +89,27 @@ CREATE TABLE public.execution_runs (
                                        metrics jsonb NULL,
                                        triggered_by varchar(64) NULL,
                                        created_at timestamptz DEFAULT now() NULL,
+                                       cancel_requested bool DEFAULT false NULL,
                                        CONSTRAINT execution_runs_pkey PRIMARY KEY (id),
                                        CONSTRAINT execution_runs_pipeline_id_fkey FOREIGN KEY (pipeline_id) REFERENCES public.pipelines(id) ON DELETE CASCADE,
                                        CONSTRAINT execution_runs_triggered_by_fkey FOREIGN KEY (triggered_by) REFERENCES public.users(id)
 );
+
+-- public.flyway_schema_history definition
+CREATE TABLE public.flyway_schema_history (
+                                              installed_rank int4 NOT NULL,
+                                              "version" varchar(50) NULL,
+                                              description varchar(200) NOT NULL,
+                                              "type" varchar(20) NOT NULL,
+                                              script varchar(1000) NOT NULL,
+                                              checksum int4 NULL,
+                                              installed_by varchar(100) NOT NULL,
+                                              installed_on timestamp DEFAULT now() NOT NULL,
+                                              execution_time int4 NOT NULL,
+                                              success bool NOT NULL,
+                                              CONSTRAINT flyway_schema_history_pk PRIMARY KEY (installed_rank)
+);
+CREATE INDEX flyway_schema_history_s_idx ON public.flyway_schema_history USING btree (success);
 
 -- public.instruction_patterns definition
 CREATE TABLE public.instruction_patterns (
@@ -124,6 +141,9 @@ CREATE TABLE public.pipelines (
                                   status varchar(20) DEFAULT 'active'::character varying NULL,
                                   created_at timestamptz DEFAULT now() NULL,
                                   updated_at timestamptz DEFAULT now() NULL,
+                                  allowed_roles jsonb NULL,
+                                  allowed_users jsonb NULL,
+                                  allowed_departments jsonb NULL,
                                   CONSTRAINT pipelines_pkey PRIMARY KEY (id),
                                   CONSTRAINT pipelines_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
 );

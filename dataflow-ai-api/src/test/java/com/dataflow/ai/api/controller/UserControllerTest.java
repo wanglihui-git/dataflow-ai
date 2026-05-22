@@ -183,12 +183,12 @@ class UserControllerTest {
     @WithMockUser(roles = "ADMIN")
     void update_withAdmin_returnsUser() throws Exception {
         // 准备：配置 Mock 返回值
-        when(userService.updateUser(any(User.class))).thenReturn(testUser);
+        when(userService.updateUser(eq("user-001"), any())).thenReturn(testUser);
 
-        // 执行：发起 HTTP 请求
+        // 执行：发起 HTTP 请求（仅更新 department，验证部分更新请求体）
         mockMvc.perform(put("/v1/users/user-001")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testUser)))
+                        .content("{\"department\":\"Platform\"}"))
                 // 断言：校验响应或交互
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value("user-001"));

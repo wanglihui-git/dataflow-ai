@@ -3,7 +3,7 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
@@ -31,7 +31,7 @@ import java.util.UUID;
 public class ApiSourceReader implements SourceReader {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
@@ -60,7 +60,7 @@ public class ApiSourceReader implements SourceReader {
         log.info("Reading from API source: dataSourceId={}, type={}", dataSourceId, type);
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceService.findById(dataSourceId)
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));

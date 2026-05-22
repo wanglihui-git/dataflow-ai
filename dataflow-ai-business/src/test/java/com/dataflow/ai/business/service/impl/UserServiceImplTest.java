@@ -5,6 +5,7 @@ import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.enums.UserRole;
 import com.dataflow.ai.domain.exception.BusinessException;
 import com.dataflow.ai.domain.request.LoginRequest;
+import com.dataflow.ai.domain.request.UpdateUserRequest;
 import com.dataflow.ai.domain.response.LoginResponse;
 import com.dataflow.ai.infrastructure.security.JwtProvider;
 import com.dataflow.ai.infrastructure.security.PasswordEncoder;
@@ -129,5 +130,49 @@ class UserServiceImplTest {
 
         // 断言：校验响应或交互
         verify(userRepository).findById("user-001");
+    }
+
+    /**
+     * 验证：updateUser - 用户不存在时返回 404 业务异常。
+     */
+    @Test
+    @DisplayName("updateUser - 用户不存在")
+    void updateUser_missingUser_throwsNotFound() {
+        when(userRepository.findById("missing")).thenReturn(Optional.empty());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> userService.updateUser("missing", UpdateUserRequest.builder().department("IT").build()));
+
+        assertEquals(404, ex.getCode());
+        assertEquals("用户不存在", ex.getMessage());
+    }
+
+    /**
+     * 验证：updateUser - 仅合并非 null 字段，保留 username 等必填列。
+     */
+    @Test
+    @DisplayName("updateUser - 部分字段更新")
+    void updateUser_partialFields_mergesIntoExisting() {
+        User existing = User.builder()
+                .id("user-001")
+                .username("admin")
+                .email("admin@test.com")
+                .passwordHash("hash")
+                .role(UserRole.ADMIN)
+                .department("IT")
+                .status("active")
+                .build();
+        when(userRepository.findById("user-001")).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User updated = userService.updateUser("user-001",
+                UpdateUserRequest.builder().department("Platform").build());
+
+        assertEquals("admin", updated.getUsername());
+        assertEquals("admin@test.com", updated.getEmail());
+        assertEquals("hash", updated.getPasswordHash());
+        assertEquals(UserRole.ADMIN, updated.getRole());
+        assertEquals("Platform", updated.getDepartment());
+        verify(userRepository).save(existing);
     }
 }

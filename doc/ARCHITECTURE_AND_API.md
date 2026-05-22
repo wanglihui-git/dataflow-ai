@@ -1,7 +1,7 @@
 # DataFlow AI — 架构与功能文档
 
 > 版本基于代码库当前实现（Spring Boot 3.2.3）。  
-> 所有业务 API 统一前缀：`http://127.0.0.1:8080/api`（`server.servlet.context-path=/api`）。  
+> 所有业务 API 统一前缀：`http://127.0.0.1:7681/api`（`server.servlet.context-path=/api`）。  
 > **API 章节更新**：2026-05-22（与 Controller 源码对齐，共 43 个 HTTP 端点）。
 
 ---
@@ -294,7 +294,7 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 
 ## 11. REST API 详细说明
 
-> **基址**：`http://127.0.0.1:8080/api`  
+> **基址**：`http://127.0.0.1:7681/api`  
 > **鉴权**：除标注「认证：否」外，需 `Authorization: Bearer <JWT>`。  
 > 下列示例为 PowerShell `curl`；登录后使用 `$token`。
 
@@ -390,11 +390,11 @@ Schema 脚本：`doc/db/init.sql`（需先 `CREATE EXTENSION vector`）。
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
 ```
 
 ```powershell
-$token = (curl.exe -s -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}" | ConvertFrom-Json).data.token
+$token = (curl.exe -s -X POST "http://127.0.0.1:7681/api/v1/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}" | ConvertFrom-Json).data.token
 ```
 
 #### POST `/v1/auth/refresh`
@@ -429,11 +429,11 @@ $token = (curl.exe -s -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Cont
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/refresh" -H "Content-Type: application/json" -d '{"refreshToken":"<refresh-token>"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/auth/refresh" -H "Content-Type: application/json" -d '{"refreshToken":"<refresh-token>"}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
 ```
 
 #### POST `/v1/auth/logout`
@@ -461,11 +461,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/login" -H "Content-Type: app
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/auth/logout" -H "Content-Type: application/json"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/auth/logout" -H "Content-Type: application/json"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/auth/logout" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/auth/logout" -H "Authorization: Bearer $token"
 ```
 
 
@@ -508,11 +508,11 @@ curl "http://127.0.0.1:8080/api/v1/auth/logout" -H "Authorization: Bearer $token
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/users" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/users" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/users" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/users" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/users/{id}`
@@ -549,11 +549,11 @@ curl "http://127.0.0.1:8080/api/v1/users" -H "Authorization: Bearer $token"
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/users/u-002" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/users/u-002" -H "Authorization: Bearer $token"
 ```
 
 #### PUT `/v1/users/me/password`
@@ -582,11 +582,11 @@ curl "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token
 **示例**
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/me/password" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"oldPassword":"admin123","newPassword":"NewPass123!"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/users/me/password" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"oldPassword":"admin123","newPassword":"NewPass123!"}'
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/users/me/password" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/users/me/password" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/users`
@@ -623,24 +623,25 @@ curl "http://127.0.0.1:8080/api/v1/users/me/password" -H "Authorization: Bearer 
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER","department":"RD"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER","department":"RD"}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/users" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","password":"pass1234","role":"DEVELOPER"}'
 ```
 
 #### PUT `/v1/users/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 更新用户；Path id 覆盖 Body id。 |
+| **说明** | 部分更新用户；仅 Body 中非 null 字段写入，未传字段保持原值；用户不存在返回 404。 |
 | **认证** | 是（Bearer JWT） |
 | **权限** | ROLE_ADMIN |
 
 **参数**
 
-| Path | id | Body: User JSON |
+| Path | id | string | 是 | 用户 ID |
+| Body | username, email, role, department, status | `UpdateUserRequest` | 否 | 均为可选，至少传一个待更新字段 |
 
 **响应体**
 
@@ -664,11 +665,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/users" -H "Content-Type: applicat
 **示例**
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","role":"ANALYST","status":"active"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"username":"dev1","email":"dev1@corp.com","role":"ANALYST","status":"active"}'
 ```
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"department":"Platform"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/users/u-002" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"department":"Platform"}'
 ```
 
 #### DELETE `/v1/users/{id}`
@@ -696,11 +697,11 @@ curl.exe -X PUT "http://127.0.0.1:8080/api/v1/users/u-002" -H "Content-Type: app
 **示例**
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/users/u-002" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/users/u-002" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/users/u-999" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/users/u-999" -H "Authorization: Bearer $token"
 ```
 
 
@@ -748,11 +749,11 @@ curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/users/u-999" -H "Authorization:
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo","type":"MYSQL","connectionConfig":{"host":"127.0.0.1","port":3306,"database":"demo","username":"root","password":"secret"}}'
 ```
 
 #### GET `/v1/data-sources`
@@ -794,11 +795,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources" -H "Content-Type: a
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/data-sources/{id}`
@@ -840,24 +841,24 @@ curl "http://127.0.0.1:8080/api/v1/data-sources" -H "Authorization: Bearer $toke
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
 ```
 
 #### PUT `/v1/data-sources/{id}`
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 部分更新。 |
+| **说明** | 部分更新；`connectionConfig` 按 key 与库中已有配置合并（先解密再覆盖同名键后重新加密），未传的键保留原值。 |
 | **认证** | 是（Bearer JWT） |
 | **权限** | 可修改权 |
 
 **参数**
 
-| Body | name?, type?, connectionConfig? |
+| Body | name?, type?, connectionConfig?（Map 内仅传待改字段，如只改密码可只传 `password`） |
 
 **响应体**
 
@@ -886,11 +887,15 @@ curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Beare
 **示例**
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo-v2"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"mysql-demo-v2"}'
 ```
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"connectionConfig":{"host":"10.0.0.1"}}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"connectionConfig":{"host":"10.0.0.1"}}'
+```
+
+```powershell
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"connectionConfig":{"password":"123456"}}'
 ```
 
 #### DELETE `/v1/data-sources/{id}`
@@ -918,11 +923,11 @@ curl.exe -X PUT "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Content-T
 **示例**
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/data-sources/{id}/test`
@@ -950,11 +955,11 @@ curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001" -H "Author
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/test" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/data-sources/{id}/preview`
@@ -990,11 +995,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/test" -H "Con
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/preview?tableName=orders&sampleSize=5" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/preview?tableName=orders&sampleSize=5" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/preview?query=SELECT%20*%20FROM%20orders%20LIMIT%205" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/preview?query=SELECT%20*%20FROM%20orders%20LIMIT%205" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 
@@ -1036,11 +1041,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/preview?query
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/data-sources/{dataSourceId}/column-permissions`
@@ -1078,11 +1083,11 @@ curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "A
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"columnName":"salary","targetRole":"ANALYST","accessType":"MASKED","maskRule":"****"}'
 ```
 
 #### DELETE `/v1/data-sources/{dataSourceId}/column-permissions/{id}`
@@ -1110,11 +1115,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permis
 **示例**
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001/column-permissions/cp-001" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/data-sources/{dataSourceId}/row-permissions`
@@ -1151,11 +1156,11 @@ curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/column-perm
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/data-sources/{dataSourceId}/row-permissions`
@@ -1192,11 +1197,11 @@ curl "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Auth
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"targetRole":"VIEWER","filterCondition":"dept_id = 'SALES'","priority":10}'
 ```
 
 #### DELETE `/v1/data-sources/{dataSourceId}/row-permissions/{id}`
@@ -1224,11 +1229,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissio
 **示例**
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001/row-permissions/rp-001" -H "Authorization: Bearer $token"
 ```
 
 
@@ -1297,11 +1302,11 @@ curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/data-sources/ds-001/row-permiss
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/pipelines" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders","description":"订单清洗","source":{"dataSourceId":"ds-001","type":"MYSQL","tableName":"orders"},"transforms":[],"sink":{"dataSourceId":"ds-001","tableName":"orders_clean","writeMode":"APPEND"},"schedule":{"scheduleType":"MANUAL","enabled":false}}'
 ```
 
 #### GET `/v1/pipelines`
@@ -1370,11 +1375,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines" -H "Content-Type: appl
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines?name=etl&page=0&size=10" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines?name=etl&page=0&size=10" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/pipelines/{id}`
@@ -1437,11 +1442,11 @@ curl "http://127.0.0.1:8080/api/v1/pipelines?name=etl&page=0&size=10" -H "Author
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
 ```
 
 #### PUT `/v1/pipelines/{id}`
@@ -1504,11 +1509,11 @@ curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $
 **示例**
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders-v2","status":"active"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"name":"etl-orders-v2","status":"active"}'
 ```
 
 ```powershell
-curl.exe -X PUT "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"description":"updated"}'
+curl.exe -X PUT "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"description":"updated"}'
 ```
 
 #### DELETE `/v1/pipelines/{id}`
@@ -1536,11 +1541,11 @@ curl.exe -X PUT "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Content-Type
 **示例**
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
+curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/pipelines/{id}/run`
@@ -1590,11 +1595,11 @@ curl.exe -X DELETE "http://127.0.0.1:8080/api/v1/pipelines/pl-001" -H "Authoriza
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/pipelines/pl-001/run" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/pipelines/{id}/runs`
@@ -1644,11 +1649,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/pipelines/pl-001/run" -H "Content
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001/runs" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/pipelines/{id}/preview`
@@ -1683,11 +1688,11 @@ curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/runs" -H "Authorization: Bea
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001/preview" -H "Authorization: Bearer $token"
 ```
 
 
@@ -1749,11 +1754,11 @@ curl "http://127.0.0.1:8080/api/v1/pipelines/pl-001/preview" -H "Authorization: 
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs?status=SUCCESS&page=0&size=20" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs?status=SUCCESS&page=0&size=20" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/execution/runs/{runId}`
@@ -1803,11 +1808,11 @@ curl "http://127.0.0.1:8080/api/v1/execution/runs?status=SUCCESS&page=0&size=20"
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs/run-001" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/execution/runs/{runId}/logs`
@@ -1846,11 +1851,11 @@ curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001" -H "Authorization: Be
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/runs/run-001/logs" -H "Authorization: Bearer $token"
 ```
 
 #### POST `/v1/execution/runs/{runId}/cancel`
@@ -1878,11 +1883,11 @@ curl "http://127.0.0.1:8080/api/v1/execution/runs/run-001/logs" -H "Authorizatio
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/execution/runs/run-001/cancel" -H "Content-Type: application/json" -H "Authorization: Bearer $token"
 ```
 
 #### GET `/v1/execution/pipelines/{pipelineId}/stats`
@@ -1915,11 +1920,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/execution/runs/run-001/cancel" -H
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/execution/pipelines/pl-001/stats" -H "Authorization: Bearer $token"
 ```
 
 
@@ -1983,11 +1988,11 @@ curl "http://127.0.0.1:8080/api/v1/execution/pipelines/pl-001/stats" -H "Authori
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/generate-transforms" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"把金额字段映射为 amount","context":{"sourceSchema":{"fields":[{"name":"amt","type":"decimal"}]}},"options":{"maxNodes":5,"strict":true}}'
 ```
 
 #### POST `/v1/ai/search-similar`
@@ -2032,11 +2037,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/generate-transforms" -H "Conte
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额","limit":5,"minSimilarity":0.75}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额","limit":5,"minSimilarity":0.75}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/search-similar" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"instruction":"映射金额"}'
 ```
 
 #### POST `/v1/ai/feedback`
@@ -2064,11 +2069,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/search-similar" -H "Content-Ty
 **示例**
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"accept","pipelineId":"pl-001"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"accept","pipelineId":"pl-001"}'
 ```
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"reject"}'
+curl.exe -X POST "http://127.0.0.1:7681/api/v1/ai/feedback" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"aiHelperId":"ah-001","action":"reject"}'
 ```
 
 
@@ -2120,11 +2125,11 @@ curl.exe -X POST "http://127.0.0.1:8080/api/v1/ai/feedback" -H "Content-Type: ap
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/audit-logs" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/audit-logs" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v1/audit-logs?userId=u-001&action=LOGIN&page=0&size=20" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/v1/audit-logs?userId=u-001&action=LOGIN&page=0&size=20" -H "Authorization: Bearer $token"
 ```
 
 ## 12. Actuator 与文档端点
@@ -2149,7 +2154,7 @@ curl "http://127.0.0.1:8080/api/v1/audit-logs?userId=u-001&action=LOGIN&page=0&s
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/health"
+curl "http://127.0.0.1:7681/api/actuator/health"
 ```
 
 ---
@@ -2175,11 +2180,11 @@ curl "http://127.0.0.1:8080/api/actuator/health"
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/info" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/actuator/info" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/info" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/actuator/info" -H "Authorization: Bearer $token"
 ```
 
 ---
@@ -2206,11 +2211,11 @@ curl "http://127.0.0.1:8080/api/actuator/info" -H "Authorization: Bearer $token"
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/metrics" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/actuator/metrics" -H "Authorization: Bearer $token"
 ```
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/metrics/dataflow.pipeline.records.processed" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/actuator/metrics/dataflow.pipeline.records.processed" -H "Authorization: Bearer $token"
 ```
 
 ---
@@ -2232,7 +2237,7 @@ dataflow_pipeline_records_processed_total 1000.0
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/actuator/prometheus" -H "Authorization: Bearer $token"
+curl "http://127.0.0.1:7681/api/actuator/prometheus" -H "Authorization: Bearer $token"
 ```
 
 ---
@@ -2241,18 +2246,18 @@ curl "http://127.0.0.1:8080/api/actuator/prometheus" -H "Authorization: Bearer $
 
 | 地址 | 说明 |
 |------|------|
-| http://127.0.0.1:8080/api/doc.html | Knife4j UI |
-| http://127.0.0.1:8080/api/swagger-ui.html | Swagger UI |
-| http://127.0.0.1:8080/api/v3/api-docs | OpenAPI JSON |
+| http://127.0.0.1:7681/api/doc.html | Knife4j UI |
+| http://127.0.0.1:7681/api/swagger-ui.html | Swagger UI |
+| http://127.0.0.1:7681/api/v3/api-docs | OpenAPI JSON |
 
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:8080/api/v3/api-docs"
+curl "http://127.0.0.1:7681/api/v3/api-docs"
 ```
 
 ```powershell
-start http://127.0.0.1:8080/api/doc.html
+start http://127.0.0.1:7681/api/doc.html
 ```
 
 ---
@@ -2335,4 +2340,4 @@ start http://127.0.0.1:8080/api/doc.html
 
 ---
 
-*文档与源码同步维护（2026-05-22）。交互式调试：http://127.0.0.1:8080/api/doc.html*
+*文档与源码同步维护（2026-05-22）。交互式调试：http://127.0.0.1:7681/api/doc.html*

@@ -7,6 +7,7 @@ import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.mapper.UserMapper;
 import com.dataflow.ai.domain.request.ChangePasswordRequest;
 import com.dataflow.ai.domain.request.CreateUserRequest;
+import com.dataflow.ai.domain.request.UpdateUserRequest;
 import com.dataflow.ai.domain.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -96,18 +97,17 @@ public class UserController {
     }
 
     /**
-     * 更新用户（仅管理员）；路径中的 id 会覆盖请求体中的 id。
+     * 更新用户（仅管理员）；请求体仅非 null 字段会写入，未传字段保持原值。
      *
-     * @param id   用户 ID
-     * @param user 完整或部分用户实体
+     * @param id      用户 ID
+     * @param request 待更新字段（username、email、role、department、status）
      * @return 更新后的用户 VO
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<UserVO> update(@PathVariable String id, @RequestBody User user) {
-        user.setId(id);
-        User updated = userService.updateUser(user);
+    public ApiResponse<UserVO> update(@PathVariable String id, @RequestBody UpdateUserRequest request) {
+        User updated = userService.updateUser(id, request);
         return ApiResponse.ofSuccess(UserMapper.toVO(updated));
     }
 

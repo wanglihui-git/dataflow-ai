@@ -100,8 +100,9 @@ public class DataSourceServiceImpl implements DataSourceService {
             dataSource.setType(request.getType());
         }
         if (request.getConnectionConfig() != null) {
-            Map<String, Object> encryptedConfig = encryptionService.encrypt(request.getConnectionConfig());
-            dataSource.setConnectionConfig(encryptedConfig);
+            Map<String, Object> merged = mergeConnectionConfig(
+                    dataSource.getConnectionConfig(), request.getConnectionConfig());
+            dataSource.setConnectionConfig(encryptionService.encrypt(merged));
         }
 
         dataSource.setUpdatedAt(LocalDateTime.now());
@@ -174,6 +175,24 @@ public class DataSourceServiceImpl implements DataSourceService {
         } catch (Exception e) {
             log.debug("Skip preview permission masking: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 将请求中的连接配置补丁合并到已有配置（先解密再覆盖同名键，最后整体加密落库）。
+     *
+     * @param existingEncrypted 库中已加密的连接配置，可为 null
+     * @param patch             请求体中的部分连接配置（明文）
+     * @return 合并后的明文连接配置
+     */
+    private Map<String, Object> mergeConnectionConfig(
+            Map<String, Object> existingEncrypted, Map<String, Object> patch) {
+        Map<String, Object> merged = new HashMap<>();
+        Map<String, Object> existingPlain = encryptionService.decrypt(existingEncrypted);
+        if (existingPlain != null) {
+            merged.putAll(existingPlain);
+        }
+        merged.putAll(patch);
+        return merged;
     }
 
     /**
