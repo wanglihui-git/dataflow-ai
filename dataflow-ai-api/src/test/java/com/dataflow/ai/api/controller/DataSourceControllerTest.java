@@ -10,6 +10,7 @@ import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -167,19 +168,35 @@ class DataSourceControllerTest {
     }
 
     /**
-     * 验证：POST /v1/data-sources/{id}/test - 连接测试（当前 Service 为占位实现）。
+     * 验证：POST /v1/data-sources/{id}/test - 连接成功。
      */
     @Test
-    @DisplayName("POST /v1/data-sources/{id}/test - 连接测试（当前 Service 为占位实现）")
+    @DisplayName("POST /v1/data-sources/{id}/test - 连接成功")
     void testConnection_success() throws Exception {
-        // 准备：配置 Mock 返回值
-        when(dataSourceService.testConnection("ds-001")).thenReturn(true);
+        when(dataSourceService.testConnection("ds-001"))
+                .thenReturn(ConnectionTestResult.success());
 
-        // 执行：发起 HTTP 请求
         mockMvc.perform(post("/v1/data-sources/ds-001/test"))
-                // 断言：校验响应或交互
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value(true));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.connected").value(true))
+                .andExpect(jsonPath("$.data.message").value("连接成功"));
+    }
+
+    /**
+     * 验证：POST /v1/data-sources/{id}/test - 连接失败返回 400 与原因。
+     */
+    @Test
+    @DisplayName("POST /v1/data-sources/{id}/test - 连接失败")
+    void testConnection_failure() throws Exception {
+        when(dataSourceService.testConnection("ds-001"))
+                .thenReturn(ConnectionTestResult.failure("数据库连接失败: Connection refused"));
+
+        mockMvc.perform(post("/v1/data-sources/ds-001/test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("数据库连接失败: Connection refused"))
+                .andExpect(jsonPath("$.data.connected").value(false));
     }
 
     /**

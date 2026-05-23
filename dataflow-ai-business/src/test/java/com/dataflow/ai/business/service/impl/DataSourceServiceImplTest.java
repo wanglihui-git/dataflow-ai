@@ -8,6 +8,7 @@ import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import org.junit.jupiter.api.DisplayName;
@@ -131,9 +132,10 @@ class DataSourceServiceImplTest {
         // 准备：配置 Mock 返回值
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
         when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
-        when(sourceReader.testConnection(ds)).thenReturn(true);
+        when(sourceReader.testConnection(ds)).thenReturn(ConnectionTestResult.success());
 
-        assertTrue(dataSourceService.testConnection("ds-1"));
+        ConnectionTestResult result = dataSourceService.testConnection("ds-1");
+        assertTrue(result.isConnected());
     }
 
     /**
@@ -146,9 +148,12 @@ class DataSourceServiceImplTest {
         // 准备：配置 Mock 返回值
         when(dataSourceRepository.findById("ds-1")).thenReturn(Optional.of(ds));
         when(sourceReaderFactory.createReader(ds)).thenReturn(sourceReader);
-        when(sourceReader.testConnection(ds)).thenReturn(false);
+        when(sourceReader.testConnection(ds)).thenReturn(
+                ConnectionTestResult.failure("数据库连接失败: Connection refused"));
 
-        assertFalse(dataSourceService.testConnection("ds-1"));
+        ConnectionTestResult result = dataSourceService.testConnection("ds-1");
+        assertFalse(result.isConnected());
+        assertTrue(result.getMessage().contains("Connection refused"));
     }
 
     /**

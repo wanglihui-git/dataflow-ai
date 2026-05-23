@@ -934,7 +934,7 @@ curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Author
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 测试连通性。 |
+| **说明** | 测试连通性；成功 `code=200`，失败 `code=400` 且 `msg`/`data.message` 含失败原因。 |
 | **认证** | 是（Bearer JWT） |
 | **权限** | 访问权 |
 
@@ -942,13 +942,29 @@ curl.exe -X DELETE "http://127.0.0.1:7681/api/v1/data-sources/ds-001" -H "Author
 
 | Path | id |
 
-**响应体**
+**响应体（成功）**
 
 ```json
 {
   "code": 200,
   "msg": "Success",
-  "data": true
+  "data": {
+    "connected": true,
+    "message": "连接成功"
+  }
+}
+```
+
+**响应体（失败）**
+
+```json
+{
+  "code": 400,
+  "msg": "数据库连接失败: Communications link failure",
+  "data": {
+    "connected": false,
+    "message": "数据库连接失败: Communications link failure"
+  }
 }
 ```
 
@@ -995,7 +1011,7 @@ curl.exe -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/test" -H "Con
 **示例**
 
 ```powershell
-curl "http://127.0.0.1:7681/api/v1/data-sources/ds-001/preview?tableName=orders&sampleSize=5" -H "Authorization: Bearer $token"
+curl -X POST "http://127.0.0.1:7681/api/v1/data-sources/ds-001/preview?tableName=orders&sampleSize=5" -H "Authorization: Bearer $token"
 ```
 
 ```powershell

@@ -13,6 +13,7 @@ import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.vo.SourceConfig;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
@@ -117,7 +118,7 @@ public class DataSourceServiceImpl implements DataSourceService {
 
     /** {@inheritDoc} */
     @Override
-    public boolean testConnection(String dataSourceId) {
+    public ConnectionTestResult testConnection(String dataSourceId) {
         DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new RuntimeException("数据源不存在"));
         log.info("Testing connection to datasource: {}", dataSource.getName());
@@ -212,7 +213,7 @@ public class DataSourceServiceImpl implements DataSourceService {
             builder.query(query.trim());
         } else if (tableName != null && !tableName.isBlank()) {
             builder.tableName(tableName.trim());
-            builder.query("SELECT * FROM " + tableName.trim() + " LIMIT " + sampleSize);
+            builder.query("SELECT * FROM " + tableName.trim());
         } else {
             throw new RuntimeException("预览需要指定 tableName 或 query 参数");
         }

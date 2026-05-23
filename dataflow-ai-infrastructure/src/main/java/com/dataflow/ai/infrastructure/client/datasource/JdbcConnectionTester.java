@@ -1,5 +1,7 @@
 package com.dataflow.ai.infrastructure.client.datasource;
 
+import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
@@ -26,15 +28,31 @@ public final class JdbcConnectionTester {
      * @return 连接成功且有效返回 {@code true}
      */
     public static boolean test(String url, String username, String password, int validTimeoutSeconds) {
+        return testResult(url, username, password, validTimeoutSeconds).isConnected();
+    }
+
+    /**
+     * 从解密后的连接配置 Map 读取连接信息并测试。
+     *
+     * @param decryptedConfig       连接配置
+     * @param type                  数据源类型（用于解析 host/port 或 JDBC 驱动）
+     * @param validTimeoutSeconds   isValid 超时秒数
+     * @return 连通性测试结果（含失败原因）
+     */
+    public static ConnectionTestResult testResult(
+            Map<String, Object> decryptedConfig, DataSourceType type, int validTimeoutSeconds) {
+        if (decryptedConfig == null) {
+            return ConnectionTestResult.failure("连接配置为空");
+        }
+        String url = JdbcConnectionConfigResolver.resolveUrl(decryptedConfig, type);
         if (url == null || url.isBlank()) {
-            return false;
+            return ConnectionTestResult.failure("连接配置不完整：请提供 url，或 host/port（及 database）");
         }
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            return connection.isValid(Math.max(1, validTimeoutSeconds));
-        } catch (SQLException e) {
-            log.debug("JDBC connection test failed: {}", e.getMessage());
-            return false;
-        }
+        return testResult(
+                url,
+                stringOrNull(decryptedConfig.get("username")),
+                stringOrNull(decryptedConfig.get("password")),
+                validTimeoutSeconds);
     }
 
     /**
@@ -43,20 +61,31 @@ public final class JdbcConnectionTester {
      * @param decryptedConfig       连接配置
      * @param validTimeoutSeconds   isValid 超时秒数
      * @return 连接有效返回 {@code true}
+     * @deprecated 请使用 {@link #testResult(Map, DataSourceType, int)} 以支持 host/port 配置与错误信息
      */
+    @Deprecated
     public static boolean test(Map<String, Object> decryptedConfig, int validTimeoutSeconds) {
-        if (decryptedConfig == null) {
-            return false;
+        return testResult(decryptedConfig, DataSourceType.MYSQL, validTimeoutSeconds).isConnected();
+    }
+
+    /**
+     * 使用 JDBC URL 与凭据测试连接并返回详细结果。
+     */
+    public static ConnectionTestResult testResult(
+            String url, String username, String password, int validTimeoutSeconds) {
+        if (url == null || url.isBlank()) {
+            return ConnectionTestResult.failure("JDBC URL 不能为空");
         }
-        Object url = decryptedConfig.get("url");
-        if (url == null) {
-            return false;
+        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+            if (connection.isValid(Math.max(1, validTimeoutSeconds))) {
+                return ConnectionTestResult.success();
+            }
+            return ConnectionTestResult.failure("数据库连接无效或超时");
+        } catch (SQLException e) {
+            log.debug("JDBC connection test failed: {}", e.getMessage());
+            String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return ConnectionTestResult.failure("数据库连接失败: " + detail);
         }
-        return test(
-                String.valueOf(url),
-                stringOrNull(decryptedConfig.get("username")),
-                stringOrNull(decryptedConfig.get("password")),
-                validTimeoutSeconds);
     }
 
     private static String stringOrNull(Object value) {

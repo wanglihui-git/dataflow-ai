@@ -7,6 +7,8 @@ import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
+import com.dataflow.ai.infrastructure.client.datasource.JdbcConnectionConfigResolver;
 import com.dataflow.ai.infrastructure.client.datasource.JdbcConnectionTester;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
@@ -76,6 +78,8 @@ public class DatabaseSourceReader implements SourceReader {
         ResultSet resultSet = null;
 
         try {
+            url = JdbcConnectionConfigResolver.resolveUrl(config, type);
+
             // 建立数据库连接
             connection = createConnection(url, username, password);
 
@@ -146,9 +150,9 @@ public class DatabaseSourceReader implements SourceReader {
      * @return 连接成功返回 true
      */
     @Override
-    public boolean testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        return JdbcConnectionTester.test(config, 5);
+        return JdbcConnectionTester.testResult(config, dataSource.getType(), 5);
     }
 
     /**

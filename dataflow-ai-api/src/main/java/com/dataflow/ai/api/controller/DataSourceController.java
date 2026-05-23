@@ -10,6 +10,8 @@ import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
 import com.dataflow.ai.domain.response.ApiResponse;
+import com.dataflow.ai.domain.response.ResponseCode;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -123,17 +125,20 @@ public class DataSourceController {
      * 测试数据源连通性。
      *
      * @param id 数据源 ID
-     * @return true 表示连接成功
+     * @return 连通性结果；失败时 code 为 400，msg 与 data.message 含失败原因
      */
     @PostMapping("/{id}/test")
     @Operation(summary = "测试数据源连接")
-    public ApiResponse<Boolean> test(@PathVariable String id) {
+    public ApiResponse<ConnectionTestResult> test(@PathVariable String id) {
         User user = requireCurrentUser();
         DataSource dataSource = dataSourceService.findById(id)
                 .orElseThrow(() -> new RuntimeException("数据源不存在"));
         ResourceAuthorizationHelper.requireDataSourceAccess(dataSource, user, permissionService);
-        boolean result = dataSourceService.testConnection(id);
-        return ApiResponse.ofSuccess(result);
+        ConnectionTestResult result = dataSourceService.testConnection(id);
+        if (result.isConnected()) {
+            return ApiResponse.ofSuccess(result);
+        }
+        return ApiResponse.of(ResponseCode.CODE_400.getCode(), result.getMessage(), result);
     }
 
     /**

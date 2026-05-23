@@ -5,6 +5,7 @@ import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
 import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -155,16 +156,22 @@ public class CsvSourceReader implements SourceReader {
      * @return 连接成功返回 true
      */
     @Override
-    public boolean testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
 
-        if (filePath == null) {
-            return false;
+        if (filePath == null || filePath.isBlank()) {
+            return ConnectionTestResult.failure("连接配置缺少 filePath");
         }
 
         Path path = Paths.get(filePath);
-        return Files.exists(path) && Files.isReadable(path);
+        if (!Files.exists(path)) {
+            return ConnectionTestResult.failure("文件不存在: " + filePath);
+        }
+        if (!Files.isReadable(path)) {
+            return ConnectionTestResult.failure("文件不可读: " + filePath);
+        }
+        return ConnectionTestResult.success();
     }
 
     /**

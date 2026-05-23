@@ -5,6 +5,7 @@ import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
 import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -187,26 +188,25 @@ public class KafkaSourceReader implements SourceReader {
      * @return 连接成功返回 true
      */
     @Override
-    public boolean testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String bootstrapServers = (String) config.get("bootstrapServers");
 
-        if (bootstrapServers == null) {
-            return false;
+        if (bootstrapServers == null || bootstrapServers.isBlank()) {
+            return ConnectionTestResult.failure("连接配置缺少 bootstrapServers");
         }
 
-        // 简单的连接测试：尝试创建消费者
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         try (Consumer<String, String> consumer = new KafkaConsumer<>(props)) {
-            // 如果能创建消费者，说明连接成功
-            return true;
+            return ConnectionTestResult.success();
         } catch (Exception e) {
             log.error("Kafka connection test failed: bootstrapServers={}, error={}", bootstrapServers, e.getMessage());
-            return false;
+            String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return ConnectionTestResult.failure("Kafka 连接失败: " + detail);
         }
     }
 

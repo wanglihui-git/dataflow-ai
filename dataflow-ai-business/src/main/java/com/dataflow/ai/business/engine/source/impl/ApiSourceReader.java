@@ -5,6 +5,7 @@ import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
 import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -146,16 +147,24 @@ public class ApiSourceReader implements SourceReader {
      * @return 连接成功返回 true
      */
     @Override
-    public boolean testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String url = (String) config.get("url");
+        if (url == null || url.isBlank()) {
+            return ConnectionTestResult.failure("连接配置缺少 url");
+        }
 
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            return response.getStatusCode().is2xxSuccessful();
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return ConnectionTestResult.success();
+            }
+            return ConnectionTestResult.failure(
+                    "API 连接失败: HTTP " + response.getStatusCode().value());
         } catch (Exception e) {
             log.error("API connection test failed: url={}, error={}", url, e.getMessage());
-            return false;
+            String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return ConnectionTestResult.failure("API 连接失败: " + detail);
         }
     }
 

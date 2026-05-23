@@ -1,6 +1,7 @@
 package com.dataflow.ai.business.service;
 
 import com.dataflow.ai.domain.entity.DataSource;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.request.CreateDataSourceRequest;
 import com.dataflow.ai.domain.request.UpdateDataSourceRequest;
@@ -67,9 +68,9 @@ public interface DataSourceService {
      * 测试数据源连接是否可用。
      *
      * @param dataSourceId 数据源 ID
-     * @return 连接成功返回 true
+     * @return 连通性测试结果（含失败原因）
      */
-    boolean testConnection(String dataSourceId);
+    ConnectionTestResult testConnection(String dataSourceId);
 
     /**
      * 预览数据源样本数据（应用行/列权限脱敏）。
