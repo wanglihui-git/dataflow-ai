@@ -1469,13 +1469,14 @@ curl "http://127.0.0.1:7681/api/v1/pipelines/pl-001" -H "Authorization: Bearer $
 
 | 项 | 内容 |
 |----|------|
-| **说明** | 更新 Pipeline。 |
+| **说明** | 部分更新 Pipeline；仅 Body 中非 null 字段写入，未传字段保持原值。 |
 | **认证** | 是（Bearer JWT） |
 | **权限** | 修改权 |
 
 **参数**
 
-| Body | Pipeline |
+| Path | id | string | 是 | Pipeline ID |
+| Body | name, description, source, transforms, sink, schedule, permissionLevel, allowedRoles, allowedUsers, allowedDepartments, status | `UpdatePipelineRequest` | 否 | 均为可选 |
 
 **响应体**
 

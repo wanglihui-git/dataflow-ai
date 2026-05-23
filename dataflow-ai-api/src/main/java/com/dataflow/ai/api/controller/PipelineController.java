@@ -9,6 +9,7 @@ import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.entity.User;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.domain.request.UpdatePipelineRequest;
 import com.dataflow.ai.domain.response.ApiResponse;
 import com.dataflow.ai.domain.response.PageResponse;
 import org.springframework.data.domain.PageRequest;
@@ -92,20 +93,20 @@ public class PipelineController {
     }
 
     /**
-     * 更新 Pipeline 配置。
+     * 更新 Pipeline 配置；请求体仅非 null 字段会写入，未传字段保持原值。
      *
-     * @param id       Pipeline ID
-     * @param pipeline 完整配置体
+     * @param id      Pipeline ID
+     * @param request 待更新字段
      * @return 更新后的 Pipeline
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新Pipeline")
-    public ApiResponse<Pipeline> update(@PathVariable String id, @RequestBody Pipeline pipeline) {
+    public ApiResponse<Pipeline> update(@PathVariable String id, @RequestBody UpdatePipelineRequest request) {
         User user = requireCurrentUser();
         Pipeline existing = pipelineService.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
         ResourceAuthorizationHelper.requirePipelineModify(existing, user, permissionService);
-        Pipeline updated = pipelineService.updatePipeline(id, pipeline);
+        Pipeline updated = pipelineService.updatePipeline(id, request);
         return ApiResponse.ofSuccess(updated);
     }
 

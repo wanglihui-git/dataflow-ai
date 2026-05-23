@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.domain.request.UpdatePipelineRequest;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,10 +99,44 @@ public class PipelineServiceImpl implements PipelineService {
 
     /** {@inheritDoc} */
     @Override
-    public Pipeline updatePipeline(String id, Pipeline pipeline) {
-        pipeline.setId(id);
-        pipeline.setUpdatedAt(LocalDateTime.now());
-        return pipelineRepository.save(pipeline);
+    public Pipeline updatePipeline(String id, UpdatePipelineRequest request) {
+        Pipeline existing = pipelineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
+        if (request.getName() != null) {
+            existing.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            existing.setDescription(request.getDescription());
+        }
+        if (request.getSource() != null) {
+            existing.setSource(request.getSource());
+        }
+        if (request.getTransforms() != null) {
+            existing.setTransforms(request.getTransforms());
+        }
+        if (request.getSink() != null) {
+            existing.setSink(request.getSink());
+        }
+        if (request.getSchedule() != null) {
+            existing.setSchedule(request.getSchedule());
+        }
+        if (request.getPermissionLevel() != null) {
+            existing.setPermissionLevel(resolvePermissionLevel(request.getPermissionLevel()));
+        }
+        if (request.getAllowedRoles() != null) {
+            existing.setAllowedRoles(request.getAllowedRoles());
+        }
+        if (request.getAllowedUsers() != null) {
+            existing.setAllowedUsers(request.getAllowedUsers());
+        }
+        if (request.getAllowedDepartments() != null) {
+            existing.setAllowedDepartments(request.getAllowedDepartments());
+        }
+        if (request.getStatus() != null) {
+            existing.setStatus(request.getStatus());
+        }
+        existing.setUpdatedAt(LocalDateTime.now());
+        return pipelineRepository.save(existing);
     }
 
     /** {@inheritDoc} */

@@ -7,6 +7,7 @@ import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 import com.dataflow.ai.domain.enums.ExecutionStatus;
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.domain.request.UpdatePipelineRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -59,6 +61,43 @@ class PipelineServiceImplTest {
         // 断言：校验响应或交互
         assertEquals("user-001", pipeline.getOwnerId());
         verify(pipelineRepository).save(any());
+    }
+
+    /**
+     * 验证：updatePipeline - 仅合并非 null 字段，保留 name 等必填列。
+     */
+    @Test
+    @DisplayName("updatePipeline - 部分字段更新")
+    void updatePipeline_partialFields_mergesIntoExisting() {
+        Pipeline existing = Pipeline.builder()
+                .id("pipe-1")
+                .name("etl-orders")
+                .description("old")
+                .ownerId("user-001")
+                .status("active")
+                .build();
+        when(pipelineRepository.findById("pipe-1")).thenReturn(Optional.of(existing));
+        when(pipelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Pipeline updated = pipelineService.updatePipeline("pipe-1",
+                UpdatePipelineRequest.builder().description("updated").build());
+
+        assertEquals("etl-orders", updated.getName());
+        assertEquals("updated", updated.getDescription());
+        assertEquals("user-001", updated.getOwnerId());
+        verify(pipelineRepository).save(existing);
+    }
+
+    /**
+     * 验证：updatePipeline - Pipeline 不存在时抛异常。
+     */
+    @Test
+    @DisplayName("updatePipeline - Pipeline 不存在")
+    void updatePipeline_missingPipeline_throws() {
+        when(pipelineRepository.findById("missing")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> pipelineService.updatePipeline("missing",
+                UpdatePipelineRequest.builder().description("updated").build()));
     }
 
     /**

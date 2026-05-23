@@ -145,7 +145,7 @@ class PipelineControllerTest {
         // 执行：发起 HTTP 请求
         mockMvc.perform(put("/v1/pipelines/pipe-001")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(pipeline)))
+                        .content("{\"description\":\"updated\"}"))
                 // 断言：校验响应或交互
                 .andExpect(status().isOk());
     }

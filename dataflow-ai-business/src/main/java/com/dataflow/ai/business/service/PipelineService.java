@@ -1,6 +1,7 @@
 package com.dataflow.ai.business.service;
 
 import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.domain.request.UpdatePipelineRequest;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
 
@@ -61,13 +62,13 @@ public interface PipelineService {
     Pipeline createPipeline(CreatePipelineRequest request, String ownerId);
 
     /**
-     * 更新 Pipeline 配置。
+     * 按 ID 部分更新 Pipeline；仅 {@link UpdatePipelineRequest} 中非 null 字段会覆盖原值。
      *
-     * @param id       Pipeline ID
-     * @param pipeline 更新内容
+     * @param id      Pipeline ID
+     * @param request 待更新字段
      * @return 更新后的 Pipeline
      */
-    Pipeline updatePipeline(String id, Pipeline pipeline);
+    Pipeline updatePipeline(String id, UpdatePipelineRequest request);
 
     /**
      * 按 ID 删除 Pipeline。
