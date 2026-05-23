@@ -64,9 +64,9 @@ public class DatabaseSourceReader implements SourceReader {
 
         // 获取解密后的连接配置
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        String url = (String) config.get("url");
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
+        String url = JdbcConnectionConfigResolver.resolveUrl(config, type);
+        String username = stringOrNull(config.get("username"));
+        String password = stringOrNull(config.get("password"));
 
         // 构建SQL查询
         String query = buildQuery(sourceConfig, type);
@@ -78,7 +78,9 @@ public class DatabaseSourceReader implements SourceReader {
         ResultSet resultSet = null;
 
         try {
-            url = JdbcConnectionConfigResolver.resolveUrl(config, type);
+            if (url == null || url.isBlank()) {
+                throw new SourceException("连接配置不完整：请提供 url，或 host/port（及 database）");
+            }
 
             // 建立数据库连接
             connection = createConnection(url, username, password);
@@ -247,5 +249,9 @@ public class DatabaseSourceReader implements SourceReader {
                 .query(original.getQuery())
                 .params(original.getParams() != null ? new java.util.HashMap<>(original.getParams()) : null)
                 .build();
+    }
+
+    private static String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 }

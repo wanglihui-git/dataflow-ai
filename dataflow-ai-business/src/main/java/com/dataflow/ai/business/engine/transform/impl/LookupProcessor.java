@@ -8,6 +8,7 @@ import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.dto.TransformContext;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.TransformType;
+import com.dataflow.ai.infrastructure.client.datasource.JdbcConnectionConfigResolver;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -86,10 +87,16 @@ public class LookupProcessor implements TransformProcessor {
         }
 
         DataSource dataSource = dataSourceOpt.get();
-        Map<String, Object> connectionConfig =encryptionService.decrypt(dataSource.getConnectionConfig());;
-        String url = (String) connectionConfig.get("url");
-        String username = (String) connectionConfig.get("username");
-        String password = (String) connectionConfig.get("password");
+        Map<String, Object> connectionConfig = encryptionService.decrypt(dataSource.getConnectionConfig());
+        String url = JdbcConnectionConfigResolver.resolveUrl(connectionConfig, dataSource.getType());
+        if (url == null || url.isBlank()) {
+            throw TransformException.configurationError(
+                    context.getExecutionId(), context.getPipelineId(),
+                    context.getTransform().getNodeId(), context.getTransform().getName(),
+                    TransformType.LOOKUP, "连接配置不完整：请提供 url，或 host/port（及 database）");
+        }
+        String username = stringOrNull(connectionConfig.get("username"));
+        String password = stringOrNull(connectionConfig.get("password"));
 
         // 预加载查找数据
         Map<String, Map<String, Object>> lookupData = preloadLookupData(url, username, password,
@@ -237,5 +244,9 @@ public class LookupProcessor implements TransformProcessor {
                 log.warn("Error closing resource: {}", e.getMessage());
             }
         }
+    }
+
+    private static String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 }

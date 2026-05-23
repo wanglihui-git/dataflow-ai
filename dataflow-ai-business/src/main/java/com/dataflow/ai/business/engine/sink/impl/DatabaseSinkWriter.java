@@ -9,6 +9,7 @@ import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SinkConfig;
+import com.dataflow.ai.infrastructure.client.datasource.JdbcConnectionConfigResolver;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -57,17 +58,19 @@ public class DatabaseSinkWriter implements SinkWriter {
                 dataSourceId, tableName, writeMode, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
+        Optional<DataSource> byId = dataSourceRepository.findById(dataSourceId);
+        DataSource dataSource = byId
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.POSTGRES, tableName, writeMode,
                         "Data source not found"));
 
+        DataSourceType type = dataSource.getType();
         // 获取解密后的连接配置
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        String url = (String) config.get("url");
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
+        String url = resolveJdbcUrl(config, type);
+        String username = stringOrNull(config.get("username"));
+        String password = stringOrNull(config.get("password"));
 
         // 步骤2：按写入模式分支（追加 / 覆盖 / 忽略重复 / 更新已有）
         long writtenCount = 0;
@@ -91,7 +94,7 @@ public class DatabaseSinkWriter implements SinkWriter {
 
             default:
                 throw SinkException.unsupportedWriteMode(context.getRunId(), context.getPipeline().getId(),
-                        dataSourceId, DataSourceType.POSTGRES, writeMode);
+                        dataSourceId, type, writeMode);
         }
 
         log.info("Database write completed: runId={}, recordsWritten={}", context.getRunId(), writtenCount);
@@ -117,9 +120,9 @@ public class DatabaseSinkWriter implements SinkWriter {
     @Override
     public boolean testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        String url = (String) config.get("url");
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
+        String url = resolveJdbcUrl(config, dataSource.getType());
+        String username = stringOrNull(config.get("username"));
+        String password = stringOrNull(config.get("password"));
 
         Connection connection = null;
         try {
@@ -131,6 +134,18 @@ public class DatabaseSinkWriter implements SinkWriter {
         } finally {
             closeQuietly(connection);
         }
+    }
+
+    private String resolveJdbcUrl(Map<String, Object> config, DataSourceType type) {
+        String url = JdbcConnectionConfigResolver.resolveUrl(config, type);
+        if (url == null || url.isBlank()) {
+            throw new SinkException("连接配置不完整：请提供 url，或 host/port（及 database）");
+        }
+        return url;
+    }
+
+    private static String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     /**
