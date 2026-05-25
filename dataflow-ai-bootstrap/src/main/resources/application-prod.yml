@@ -75,8 +75,8 @@ app:
     qianwen:
       api-key: ${QIANWEN_API_KEY:${DASHSCOPE_API_KEY:}}
       base-url: ${QIANWEN_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}
-      model: ${QIANWEN_EMBEDDING_MODEL:text-embedding-v3}
-      dimensions: ${QIANWEN_EMBEDDING_DIMENSIONS:1024}
+      model: ${QIANWEN_EMBEDDING_MODEL:text-embedding-v4}
+      dimensions: ${QIANWEN_EMBEDDING_DIMENSIONS:1536}
     openai:
       api-key: ${OPENAI_API_KEY}
       base-url: ${OPENAI_EMBEDDING_BASE_URL:https://api.openai.com/v1}

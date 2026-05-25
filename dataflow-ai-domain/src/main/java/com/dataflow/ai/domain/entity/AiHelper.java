@@ -39,6 +39,7 @@ public class AiHelper {
     /**
      * 上下文信息
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> context;
 

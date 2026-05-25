@@ -83,7 +83,7 @@ public class AiClientConfiguration {
             @Value("${app.embedding.qianwen.api-key:}") String apiKey,
             @Value("${app.embedding.qianwen.base-url:" + QianwenEmbeddingGenerator.DEFAULT_ENDPOINT + "}") String baseUrl,
             @Value("${app.embedding.qianwen.model:text-embedding-v3}") String model,
-            @Value("${app.embedding.qianwen.dimensions:1024}") int dimensions) {
+            @Value("${app.embedding.qianwen.dimensions:1536}") int dimensions) {
         return new QianwenEmbeddingGenerator(webClientBuilder, apiKey, baseUrl, model, dimensions);
     }
 

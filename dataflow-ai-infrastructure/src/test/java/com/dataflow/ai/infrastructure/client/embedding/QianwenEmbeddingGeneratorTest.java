@@ -44,11 +44,35 @@ class QianwenEmbeddingGeneratorTest {
     }
 
     /**
+     * 验证：generateEmbedding - 解析 OpenAI 兼容 data[0].embedding。
+     */
+    @Test
+    @DisplayName("generateEmbedding - 解析 data[0].embedding")
+    void generateEmbedding_compatibleMode() {
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("""
+                        {
+                          "object": "list",
+                          "data": [{
+                            "object": "embedding",
+                            "index": 0,
+                            "embedding": [0.1, 0.2, 0.3]
+                          }]
+                        }
+                        """)
+                .addHeader("Content-Type", "application/json"));
+
+        float[] vec = generator.generateEmbedding("hello");
+        assertEquals(3, vec.length);
+        assertEquals(0.1f, vec[0], 0.001f);
+    }
+
+    /**
      * 验证：generateEmbedding - 解析 output.embeddings。
      */
     @Test
     @DisplayName("generateEmbedding - 解析 output.embeddings")
-    void generateEmbedding_success() {
+    void generateEmbedding_nativeMode() {
         mockWebServer.enqueue(new MockResponse()
                 .setBody("""
                         {
@@ -65,6 +89,27 @@ class QianwenEmbeddingGeneratorTest {
         // 断言：校验响应或交互
         assertEquals(3, vec.length);
         assertEquals(0.1f, vec[0], 0.001f);
+    }
+
+    /**
+     * 验证：generateEmbedding - 返回维度与配置不一致时失败。
+     */
+    @Test
+    @DisplayName("generateEmbedding - 返回维度不匹配")
+    void generateEmbedding_dimensionMismatch() {
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("""
+                        {
+                          "output": {
+                            "embeddings": [{
+                              "embedding": [0.1, 0.2]
+                            }]
+                          }
+                        }
+                        """)
+                .addHeader("Content-Type", "application/json"));
+
+        assertThrows(LlmApiException.class, () -> generator.generateEmbedding("hello"));
     }
 
     /**
