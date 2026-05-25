@@ -18,6 +18,11 @@ import java.util.List;
 public class GenerateTransformsResponse {
 
     /**
+     * AI 辅助记录 ID（用于 /v1/ai/feedback）
+     */
+    private String aiHelperId;
+
+    /**
      * 来源信息
      */
     private SourceInfo source;

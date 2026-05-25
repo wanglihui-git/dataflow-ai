@@ -24,26 +24,41 @@ public class DataSourceRepositoryImpl implements DataSourceRepository {
 
     private final DataSourceJpaRepository jpaRepository;
 
+    /**
+     * 根据 ID 查询
+     */
     @Override
     public Optional<DataSource> findById(String id) {
         return jpaRepository.findById(id);
     }
 
+    /**
+     * 根据创建人查询
+     */
     @Override
     public List<DataSource> findByCreatedBy(String createdBy) {
         return jpaRepository.findByCreatedBy(createdBy);
     }
 
+    /**
+     * 根据类型查询
+     */
     @Override
     public List<DataSource> findByType(DataSourceType type) {
         return jpaRepository.findByType(type);
     }
 
+    /**
+     * 查询全部
+     */
     @Override
     public List<DataSource> findAll() {
         return jpaRepository.findAll();
     }
 
+    /**
+     * 保存实体
+     */
     @Override
     @Transactional
     public DataSource save(DataSource dataSource) {
@@ -57,12 +72,18 @@ public class DataSourceRepositoryImpl implements DataSourceRepository {
         return jpaRepository.save(dataSource);
     }
 
+    /**
+     * 根据 ID 删除
+     */
     @Override
     @Transactional
     public void deleteById(String id) {
         jpaRepository.deleteById(id);
     }
 
+    /**
+     * 根据名称查询
+     */
     @Override
     public Optional<DataSource> findByName(String name) {
         return jpaRepository.findByName(name);

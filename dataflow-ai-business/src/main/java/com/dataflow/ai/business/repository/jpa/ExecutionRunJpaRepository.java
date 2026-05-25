@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 执行记录 Spring Data JPA 仓储
+ */
 public interface ExecutionRunJpaRepository extends JpaRepository<ExecutionRun, String> {
 
     List<ExecutionRun> findByPipelineId(String pipelineId);
@@ -16,6 +19,11 @@ public interface ExecutionRunJpaRepository extends JpaRepository<ExecutionRun, S
     List<ExecutionRun> findByPipelineIdAndStatus(String pipelineId, ExecutionStatus status);
 
     List<ExecutionRun> findByTriggeredBy(String triggeredBy);
+
+    List<ExecutionRun> findByStatus(ExecutionStatus status);
+
+    org.springframework.data.domain.Page<ExecutionRun> findByStatus(
+            ExecutionStatus status, org.springframework.data.domain.Pageable pageable);
 
     long countByPipelineId(String pipelineId);
 

@@ -33,6 +33,6 @@ public interface TransformProcessor {
      * @throws Exception 配置无效时抛出异常
      */
     default void validate(TransformContext context) throws Exception {
-        // 默认不验证
+        // 默认实现：子类可覆写以校验节点 config
     }
 }

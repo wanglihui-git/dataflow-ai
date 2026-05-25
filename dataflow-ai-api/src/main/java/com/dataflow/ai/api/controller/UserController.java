@@ -2,8 +2,13 @@ package com.dataflow.ai.api.controller;
 
 import com.dataflow.ai.business.service.UserService;
 import com.dataflow.ai.domain.response.ApiResponse;
+import com.dataflow.ai.common.utils.SecurityUtils;
 import com.dataflow.ai.domain.entity.User;
+import com.dataflow.ai.domain.mapper.UserMapper;
+import com.dataflow.ai.domain.request.ChangePasswordRequest;
 import com.dataflow.ai.domain.request.CreateUserRequest;
+import com.dataflow.ai.domain.request.UpdateUserRequest;
+import com.dataflow.ai.domain.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -15,7 +20,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 用户控制器
+ * 用户管理 REST 控制器。
+ * <p>
+ * 管理员可 CRUD 用户；任意已登录用户可查询详情（按 ID）并修改自己的密码。
+ * 对外返回 {@link UserVO}，不包含密码哈希。
+ * </p>
  */
 @Slf4j
 @RestController
@@ -26,26 +35,56 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 查询全部用户列表（仅管理员）。
+     *
+     * @return 用户 VO 列表
+     */
     @GetMapping
     @Operation(summary = "查询用户列表")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<User>> list() {
-        List<User> users = userService.findAllUsers();
-        return ApiResponse.ofSuccess(users);
+    public ApiResponse<List<UserVO>> list() {
+        return ApiResponse.ofSuccess(UserMapper.toVOList(userService.findAllUsers()));
     }
 
+    /**
+     * 按 ID 查询用户详情。
+     *
+     * @param id 用户 ID
+     * @return 用户 VO；不存在时抛运行时异常（由全局异常处理）
+     */
     @GetMapping("/{id}")
     @Operation(summary = "查询用户详情")
-    public ApiResponse<User> get(@PathVariable String id) {
+    public ApiResponse<UserVO> get(@PathVariable String id) {
         User user = userService.findById(id)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
-        return ApiResponse.ofSuccess(user);
+        return ApiResponse.ofSuccess(UserMapper.toVO(user));
     }
 
+    /**
+     * 修改当前登录用户的密码。
+     *
+     * @param request 原密码与新密码
+     * @return 成功时 data 为 null
+     */
+    @PutMapping("/me/password")
+    @Operation(summary = "修改当前用户密码")
+    public ApiResponse<Void> changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
+        String userId = SecurityUtils.getCurrentUserId();
+        userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+        return ApiResponse.ofSuccess();
+    }
+
+    /**
+     * 创建用户（仅管理员）。
+     *
+     * @param request 用户名、邮箱、密码、角色等
+     * @return 创建后的用户 VO
+     */
     @PostMapping
     @Operation(summary = "创建用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<User> create(@RequestBody @Valid CreateUserRequest request) {
+    public ApiResponse<UserVO> create(@RequestBody @Valid CreateUserRequest request) {
         log.info("Creating user: {}", request.getUsername());
         User user = userService.createUser(
                 request.getUsername(),
@@ -54,18 +93,30 @@ public class UserController {
                 request.getRole(),
                 request.getDepartment()
         );
-        return ApiResponse.ofSuccess(user);
+        return ApiResponse.ofSuccess(UserMapper.toVO(user));
     }
 
+    /**
+     * 更新用户（仅管理员）；请求体仅非 null 字段会写入，未传字段保持原值。
+     *
+     * @param id      用户 ID
+     * @param request 待更新字段（username、email、role、department、status）
+     * @return 更新后的用户 VO
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新用户")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<User> update(@PathVariable String id, @RequestBody User user) {
-        user.setId(id);
-        User updated = userService.updateUser(user);
-        return ApiResponse.ofSuccess(updated);
+    public ApiResponse<UserVO> update(@PathVariable String id, @RequestBody UpdateUserRequest request) {
+        User updated = userService.updateUser(id, request);
+        return ApiResponse.ofSuccess(UserMapper.toVO(updated));
     }
 
+    /**
+     * 删除用户（仅管理员）。
+     *
+     * @param id 用户 ID
+     * @return 空 data 的成功响应
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除用户")
     @PreAuthorize("hasRole('ADMIN')")

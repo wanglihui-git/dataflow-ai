@@ -20,6 +20,14 @@ import java.util.Map;
 @Component
 public class FlattenProcessor implements TransformProcessor {
 
+    /**
+     * 处理数据批次，执行本转换节点的业务逻辑。
+     *
+     * @param batch   输入数据批次
+     * @param context 转换上下文（含节点配置与共享状态）
+     * @return 处理后的数据批次
+     * @throws Exception 配置无效或处理失败时抛出
+     */
     @Override
     public DataBatch process(DataBatch batch, TransformContext context) throws Exception {
         log.debug("Processing Flatten transform: nodeId={}, batchId={}",
@@ -51,6 +59,11 @@ public class FlattenProcessor implements TransformProcessor {
         return result;
     }
 
+    /**
+     * 返回本处理器支持的转换类型标识。
+     *
+     * @return 转换类型名称
+     */
     @Override
     public String getSupportedType() {
         return "FLATTEN";

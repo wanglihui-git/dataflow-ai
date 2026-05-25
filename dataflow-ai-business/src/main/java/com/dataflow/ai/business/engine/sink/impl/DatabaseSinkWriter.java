@@ -3,12 +3,13 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.domain.vo.SinkConfig;
+import com.dataflow.ai.infrastructure.client.datasource.JdbcConnectionConfigResolver;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +27,22 @@ import java.util.*;
 public class DatabaseSinkWriter implements SinkWriter {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
 
     private static final int QUERY_TIMEOUT_SECONDS = 300;
 
+    /**
+     * 将数据批次写入目标存储。
+     *
+     * @param batch      待写入批次
+     * @param sinkConfig 目标配置
+     * @param context    执行上下文
+     * @return 实际写入的记录数
+     * @throws Exception 连接或写入失败时抛出
+     */
     @Override
     public long write(DataBatch batch, SinkConfig sinkConfig, ExecutionContext context) throws Exception {
         String dataSourceId = sinkConfig.getDataSourceId();
@@ -48,19 +58,21 @@ public class DatabaseSinkWriter implements SinkWriter {
                 dataSourceId, tableName, writeMode, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceService.findById(dataSourceId)
+        Optional<DataSource> byId = dataSourceRepository.findById(dataSourceId);
+        DataSource dataSource = byId
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.POSTGRES, tableName, writeMode,
                         "Data source not found"));
 
+        DataSourceType type = dataSource.getType();
         // 获取解密后的连接配置
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        String url = (String) config.get("url");
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
+        String url = resolveJdbcUrl(config, type);
+        String username = stringOrNull(config.get("username"));
+        String password = stringOrNull(config.get("password"));
 
-        // 根据写入模式执行写入
+        // 步骤2：按写入模式分支（追加 / 覆盖 / 忽略重复 / 更新已有）
         long writtenCount = 0;
 
         switch (writeMode) {
@@ -82,24 +94,35 @@ public class DatabaseSinkWriter implements SinkWriter {
 
             default:
                 throw SinkException.unsupportedWriteMode(context.getRunId(), context.getPipeline().getId(),
-                        dataSourceId, DataSourceType.POSTGRES, writeMode);
+                        dataSourceId, type, writeMode);
         }
 
         log.info("Database write completed: runId={}, recordsWritten={}", context.getRunId(), writtenCount);
         return writtenCount;
     }
 
+    /**
+     * 返回本写入器支持的目标类型标识。
+     *
+     * @return 类型名称字符串
+     */
     @Override
     public String getSupportedType() {
         return "DATABASE";
     }
 
+    /**
+     * 测试目标数据源是否可连接。
+     *
+     * @param dataSource 数据源实体
+     * @return 连接成功返回 true
+     */
     @Override
     public boolean testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
-        String url = (String) config.get("url");
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
+        String url = resolveJdbcUrl(config, dataSource.getType());
+        String username = stringOrNull(config.get("username"));
+        String password = stringOrNull(config.get("password"));
 
         Connection connection = null;
         try {
@@ -111,6 +134,18 @@ public class DatabaseSinkWriter implements SinkWriter {
         } finally {
             closeQuietly(connection);
         }
+    }
+
+    private String resolveJdbcUrl(Map<String, Object> config, DataSourceType type) {
+        String url = JdbcConnectionConfigResolver.resolveUrl(config, type);
+        if (url == null || url.isBlank()) {
+            throw new SinkException("连接配置不完整：请提供 url，或 host/port（及 database）");
+        }
+        return url;
+    }
+
+    private static String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     /**

@@ -5,7 +5,7 @@ import com.dataflow.ai.business.engine.source.impl.ApiSourceReader;
 import com.dataflow.ai.business.engine.source.impl.CsvSourceReader;
 import com.dataflow.ai.business.engine.source.impl.DatabaseSourceReader;
 import com.dataflow.ai.business.engine.source.impl.KafkaSourceReader;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -27,7 +27,7 @@ import java.util.Optional;
 public class SourceReaderFactory {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
@@ -46,6 +46,9 @@ public class SourceReaderFactory {
     @Resource
     private KafkaSourceReader kafkaSourceReader;
 
+    /**
+     * 启动时注册各 {@link DataSourceType} 与对应 {@link SourceReader} 实现。
+     */
     @PostConstruct
     public void init() {
         readers.put(DataSourceType.MYSQL, databaseSourceReader);
@@ -80,7 +83,7 @@ public class SourceReaderFactory {
      * 根据数据源ID创建读取器
      */
     public SourceReader createReaderByDataSourceId(String dataSourceId) {
-        Optional<DataSource> dataSourceOpt = dataSourceService.findById(dataSourceId);
+        Optional<DataSource> dataSourceOpt = dataSourceRepository.findById(dataSourceId);
         if (dataSourceOpt.isEmpty()) {
             throw new SourceException("Data source not found: " + dataSourceId);
         }
@@ -91,7 +94,7 @@ public class SourceReaderFactory {
      * 根据数据源ID获取数据源
      */
     public Optional<DataSource> getDataSourceById(String dataSourceId) {
-        return dataSourceService.findById(dataSourceId);
+        return dataSourceRepository.findById(dataSourceId);
     }
 
     /**

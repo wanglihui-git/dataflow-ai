@@ -33,6 +33,11 @@ public class TransformException extends ExecutionException {
      */
     private final String recordId;
 
+    /**
+     * 仅包含错误消息的构造器。
+     *
+     * @param message 错误描述
+     */
     public TransformException(String message) {
         super(message);
         this.nodeId = null;
@@ -42,6 +47,12 @@ public class TransformException extends ExecutionException {
         this.recordId = null;
     }
 
+    /**
+     * 包含错误消息与根因的构造器。
+     *
+     * @param message 错误描述
+     * @param cause   根因异常
+     */
     public TransformException(String message, Throwable cause) {
         super(message, cause);
         this.nodeId = null;
@@ -51,6 +62,16 @@ public class TransformException extends ExecutionException {
         this.recordId = null;
     }
 
+    /**
+     * 绑定执行上下文与转换节点信息的构造器。
+     *
+     * @param executionId   执行运行 ID
+     * @param pipelineId    Pipeline ID
+     * @param nodeId        转换节点 ID
+     * @param nodeName      转换节点名称
+     * @param transformType 转换类型
+     * @param message       错误描述
+     */
     public TransformException(String executionId, String pipelineId, String nodeId,
                               String nodeName, TransformType transformType,
                               String message) {
@@ -62,6 +83,17 @@ public class TransformException extends ExecutionException {
         this.recordId = null;
     }
 
+    /**
+     * 完整转换上下文并携带根因的构造器。
+     *
+     * @param executionId   执行运行 ID
+     * @param pipelineId    Pipeline ID
+     * @param nodeId        转换节点 ID
+     * @param nodeName      转换节点名称
+     * @param transformType 转换类型
+     * @param message       错误描述
+     * @param cause         根因异常
+     */
     public TransformException(String executionId, String pipelineId, String nodeId,
                               String nodeName, TransformType transformType,
                               String message, Throwable cause) {

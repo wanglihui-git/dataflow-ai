@@ -1,121 +1,156 @@
 <template>
-  <el-container class="layout-container">
-    <el-aside width="200px">
-      <div class="logo">
-        <h3>DataFlow AI</h3>
+  <el-container class="layout-root">
+    <el-aside :width="collapsed ? '64px' : '240px'" class="sidebar">
+      <div class="brand" @click="collapsed = !collapsed">
+        <span v-if="!collapsed">数据流转换平台</span>
+        <span v-else>DF</span>
+      </div>
+      <div v-if="!collapsed" class="user-block">
+        <el-avatar :size="36">{{ avatarLetter }}</el-avatar>
+        <div>
+          <div class="uname">{{ auth.username }}</div>
+          <el-tag size="small" type="info">{{ auth.role }}</el-tag>
+        </div>
       </div>
       <el-menu
         :default-active="activeMenu"
         router
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        :collapse="collapsed"
+        background-color="transparent"
+        text-color="#cbd5e1"
+        active-text-color="#60a5fa"
       >
         <el-menu-item index="/">
           <el-icon><Odometer /></el-icon>
-          <span>仪表盘</span>
+          <span>Dashboard</span>
         </el-menu-item>
         <el-menu-item index="/pipelines">
           <el-icon><Connection /></el-icon>
           <span>Pipeline</span>
         </el-menu-item>
         <el-menu-item index="/data-sources">
-          <el-icon><Database /></el-icon>
+          <el-icon><Coin /></el-icon>
           <span>数据源</span>
         </el-menu-item>
+        <el-menu-item index="/executions">
+          <el-icon><Monitor /></el-icon>
+          <span>运行任务</span>
+        </el-menu-item>
+        <el-menu-item index="/ai">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 助手</span>
+        </el-menu-item>
+        <el-menu-item v-if="auth.isAdmin" index="/users">
+          <el-icon><User /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
       </el-menu>
-    </el-aside>
-
-    <el-container>
-      <el-header>
-        <div class="header-content">
-          <span class="welcome">欢迎, {{ authStore.user?.username }}</span>
-          <el-button type="primary" @click="handleLogout">
+      <div class="sidebar-footer">
+        <el-menu
+          :collapse="collapsed"
+          background-color="transparent"
+          text-color="#cbd5e1"
+          active-text-color="#60a5fa"
+        >
+          <el-menu-item index="/settings">
+            <el-icon><Setting /></el-icon>
+            <span>设置</span>
+          </el-menu-item>
+          <el-menu-item index="" @click="handleLogout">
             <el-icon><SwitchButton /></el-icon>
-            退出
-          </el-button>
-        </div>
-      </el-header>
-      <el-main>
-        <router-view />
-      </el-main>
-    </el-container>
+            <span>登出</span>
+          </el-menu-item>
+        </el-menu>
+      </div>
+    </el-aside>
+    <el-main class="main-area">
+      <router-view />
+    </el-main>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import {
+  Odometer,
+  Connection,
+  Coin,
+  Monitor,
+  MagicStick,
+  User,
+  Setting,
+  SwitchButton
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
+const auth = useAuthStore()
+const collapsed = ref(false)
 
-const activeMenu = computed(() => route.path)
+const activeMenu = computed(() => {
+  const p = route.path
+  if (p.startsWith('/pipelines')) return '/pipelines'
+  if (p.startsWith('/data-sources')) return '/data-sources'
+  if (p.startsWith('/executions')) return '/executions'
+  return p
+})
 
-const handleLogout = async () => {
+const avatarLetter = computed(() => (auth.username?.[0] || 'U').toUpperCase())
+
+async function handleLogout() {
   try {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    authStore.logout()
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', { type: 'warning' })
+    await auth.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
   } catch {
-    // 用户取消
+    /* cancelled */
   }
 }
 </script>
 
 <style scoped>
-.layout-container {
-  height: 100%;
+.layout-root {
+  height: 100vh;
 }
-
-.el-aside {
-  background-color: #304156;
-  overflow: hidden;
+.sidebar {
+  background: var(--color-sidebar);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s;
 }
-
-.logo {
-  height: 60px;
+.brand {
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #263445;
+  color: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px solid #334155;
 }
-
-.logo h3 {
-  color: #fff;
-  margin: 0;
-  font-size: 18px;
-}
-
-.el-header {
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
+.user-block {
   display: flex;
+  gap: 10px;
+  padding: 16px;
   align-items: center;
-  padding: 0 20px;
+  border-bottom: 1px solid #334155;
 }
-
-.header-content {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.uname {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 500;
 }
-
-.welcome {
-  color: #333;
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid #334155;
 }
-
-.el-main {
-  background-color: #f0f2f5;
-  padding: 20px;
+.main-area {
+  padding: 0;
+  background: var(--color-bg);
+  overflow: auto;
 }
 </style>

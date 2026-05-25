@@ -51,6 +51,9 @@ public class TransformProcessorFactory {
     @Resource
     private GroupProcessor groupProcessor;
 
+    /**
+     * 启动时注册各 {@link TransformType} 与对应 {@link TransformProcessor} 实现。
+     */
     @PostConstruct
     public void init() {
         processors.put(TransformType.FIELD_MAPPER, fieldMapperProcessor);

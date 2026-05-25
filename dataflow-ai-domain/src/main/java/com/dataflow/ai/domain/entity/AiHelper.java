@@ -1,11 +1,14 @@
 package com.dataflow.ai.domain.entity;
 
+import com.dataflow.ai.domain.converter.TransformListConverter;
 import com.dataflow.ai.domain.vo.Transform;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,13 +39,15 @@ public class AiHelper {
     /**
      * 上下文信息
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> context;
 
     /**
      * 生成的转换节点
      */
-    @Convert(converter = com.dataflow.ai.domain.converter.TransformListConverter.class)
+    @Convert(converter = TransformListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<Transform> generatedNodes;
 

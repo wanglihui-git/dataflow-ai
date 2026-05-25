@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -56,12 +58,14 @@ public class ExecutionRun {
     /**
      * 执行日志
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> executionLog;
 
     /**
      * 指标数据
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metrics;
 
@@ -69,6 +73,12 @@ public class ExecutionRun {
      * 触发者
      */
     private String triggeredBy;
+
+    /**
+     * 是否请求取消（跨实例可见）
+     */
+    @Column(name = "cancel_requested")
+    private Boolean cancelRequested;
 
     /**
      * 创建时间

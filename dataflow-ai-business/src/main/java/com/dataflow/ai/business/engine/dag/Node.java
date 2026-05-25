@@ -11,7 +11,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * DAG节点表示
+ * DAG 图中的单个转换节点。
+ * <p>维护入边（依赖）、出边（被依赖）、入度及执行/访问状态，支持环检测与层级计算。</p>
  */
 @Data
 @Builder
@@ -66,7 +67,9 @@ public class Node {
     private boolean executed = false;
 
     /**
-     * 添加依赖节点
+     * 添加一条入边依赖（自动维护出边与入度）。
+     *
+     * @param node 被依赖的上游节点，为 null 时忽略
      */
     public void addDependency(Node node) {
         if (node != null && !dependencyIds.contains(node.getId())) {
@@ -89,19 +92,24 @@ public class Node {
     }
 
     /**
-     * 检查是否有循环依赖
+     * DFS 环检测：visiting 为当前路径，visited 为已完成子树。
+     *
+     * @param visiting 当前递归栈中的节点 ID
+     * @param visited  已确认无环的节点 ID
+     * @return 存在环返回 true
      */
     public boolean hasCycle(Set<String> visiting, Set<String> visited) {
         if (visiting.contains(id)) {
-            return true;  // 发现循环
+            return true;  // 步骤1：当前路径重复访问，判定为环
         }
 
         if (visited.contains(id)) {
-            return false;  // 已访问过，不是循环
+            return false;  // 步骤2：子树已处理完毕
         }
 
         visiting.add(id);
 
+        // 步骤3：递归检查所有上游依赖
         for (Node dep : dependencies) {
             if (dep.hasCycle(visiting, visited)) {
                 return true;

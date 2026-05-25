@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Pipeline Spring Data JPA 仓储
+ */
 public interface PipelineJpaRepository extends JpaRepository<Pipeline, String> {
 
     List<Pipeline> findByOwnerId(String ownerId);
@@ -18,17 +21,4 @@ public interface PipelineJpaRepository extends JpaRepository<Pipeline, String> {
 
     List<Pipeline> findByStatus(String status);
 
-    /**
-     * 查找用户有权访问的 Pipeline：
-     * 1. 用户是 owner
-     * 2. Pipeline 为 PUBLIC
-     * 3. 用户在 allowed_users 列表中（JSONB 数组包含查询）
-     */
-    @Query(value = """
-            SELECT * FROM pipelines
-            WHERE owner_id = ?1
-               OR permission_level = 'PUBLIC'
-               OR (allowed_users IS NOT NULL AND allowed_users @> to_jsonb(?1))
-            """, nativeQuery = true)
-    List<Pipeline> findAccessibleByUserId(String userId);
 }

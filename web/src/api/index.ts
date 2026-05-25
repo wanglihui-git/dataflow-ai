@@ -1,45 +1,45 @@
-import axios from 'axios'
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
+import type { ApiResponse } from '@/types'
+import { useAuthStore } from '@/stores/auth'
+import router from '@/router'
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+const http: AxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  timeout: 120000
 })
 
-// 请求拦截器 - 添加 token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  try {
+    const auth = useAuthStore()
+    if (auth.token) {
+      config.headers.Authorization = `Bearer ${auth.token}`
     }
-    return config
+  } catch {
+    /* pinia not ready */
+  }
+  return config
+})
+
+http.interceptors.response.use(
+  (res) => {
+    const body = res.data as ApiResponse<unknown>
+    if (body && typeof body.code === 'number' && body.code !== 200) {
+      return Promise.reject(new Error(body.msg || '请求失败'))
+    }
+    return res
   },
-  (error) => {
-    return Promise.reject(error)
+  (err) => {
+    if (err.response?.status === 401) {
+      const auth = useAuthStore()
+      auth.clearSession()
+      router.push('/login')
+    }
+    return Promise.reject(err)
   }
 )
 
-// 响应拦截器 - 自动解包 ApiResponse
-api.interceptors.response.use(
-  (response) => {
-    // 如果是 ApiResponse 格式，自动解包 data
-    const resData = response.data
-    if (resData && typeof resData === 'object' && 'data' in resData) {
-      return { ...response, data: resData.data }
-    }
-    return response
-  },
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
+export function unwrap<T>(res: { data: ApiResponse<T> }): T {
+  return res.data.data
+}
 
-export default api
+export default http

@@ -1,46 +1,101 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, LoginRequest } from '@/types'
-import { authApi } from '@/api/auth'
+import * as authApi from '@/api/auth'
+import type { LoginResult, UserRole } from '@/types'
+
+const STORAGE_KEY = 'dataflow_auth'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(localStorage.getItem('token'))
-  // const user = ref<User | null>(() => {
-  //   const stored = localStorage.getItem('user')
-  //   return stored ? JSON.parse(stored) : null
-  // })
-
-  const user = ref<User | null>(localStorage.getItem('user')
-      ? JSON.parse(localStorage.getItem('user')!)
-      : null)
+  const token = ref<string | null>(null)
+  const refreshToken = ref<string | null>(null)
+  const userId = ref<string | null>(null)
+  const username = ref<string | null>(null)
+  const role = ref<UserRole | null>(null)
+  const department = ref<string | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => role.value === 'ADMIN')
+  const canWrite = computed(() => role.value === 'ADMIN' || role.value === 'DEVELOPER')
 
-  async function login(credentials: LoginRequest) {
-    const response = await authApi.login(credentials)
-    // response.data 是 ApiResponse，嵌套的 data 才是 LoginResponse
-    const { token: newToken, ...userData } = response.data
-
-    token.value = newToken
-    user.value = userData as User
-
-    localStorage.setItem('token', newToken)
-    localStorage.setItem('user', JSON.stringify(userData))
-
-    return response.data
+  function persist() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        token: token.value,
+        refreshToken: refreshToken.value,
+        userId: userId.value,
+        username: username.value,
+        role: role.value,
+        department: department.value
+      })
+    )
   }
 
-  function logout() {
+  function loadFromStorage() {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    try {
+      const data = JSON.parse(raw) as LoginResult
+      token.value = data.token
+      refreshToken.value = data.refreshToken
+      userId.value = data.userId
+      username.value = data.username
+      role.value = data.role
+      department.value = data.department ?? null
+    } catch {
+      clearSession()
+    }
+  }
+
+  function setSession(data: LoginResult) {
+    token.value = data.token
+    refreshToken.value = data.refreshToken
+    userId.value = data.userId
+    username.value = data.username
+    role.value = data.role
+    department.value = data.department ?? null
+    persist()
+  }
+
+  function clearSession() {
     token.value = null
-    user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    refreshToken.value = null
+    userId.value = null
+    username.value = null
+    role.value = null
+    department.value = null
+    localStorage.removeItem(STORAGE_KEY)
   }
+
+  async function login(user: string, pass: string) {
+    const data = await authApi.login(user, pass)
+    setSession(data)
+    return data
+  }
+
+  async function logout() {
+    try {
+      await authApi.logout()
+    } catch {
+      /* ignore */
+    }
+    clearSession()
+  }
+
+  loadFromStorage()
 
   return {
     token,
-    user,
+    refreshToken,
+    userId,
+    username,
+    role,
+    department,
     isAuthenticated,
+    isAdmin,
+    canWrite,
+    setSession,
+    clearSession,
     login,
     logout
   }

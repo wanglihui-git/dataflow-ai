@@ -1,11 +1,16 @@
-import api from './index'
-import type { LoginRequest, LoginResponse } from '@/types'
+import http, { unwrap } from './index'
+import type { ApiResponse, LoginResult } from '@/types'
 
-export const authApi = {
-  login(data: LoginRequest) {
-    return api.post<LoginResponse>('/v1/auth/login', data)
-  },
-  logout() {
-    return api.post('/v1/auth/logout')
-  }
+export async function login(username: string, password: string) {
+  const res = await http.post<ApiResponse<LoginResult>>('/v1/auth/login', { username, password })
+  return unwrap(res)
+}
+
+export async function refresh(refreshToken: string) {
+  const res = await http.post<ApiResponse<LoginResult>>('/v1/auth/refresh', { refreshToken })
+  return unwrap(res)
+}
+
+export async function logout() {
+  await http.post('/v1/auth/logout')
 }

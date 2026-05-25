@@ -3,8 +3,9 @@ package com.dataflow.ai.business.engine.source.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SourceException;
 import com.dataflow.ai.business.engine.source.SourceReader;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.Record;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
 import com.dataflow.ai.infrastructure.security.EncryptionService;
@@ -31,7 +32,7 @@ import java.util.*;
 public class CsvSourceReader implements SourceReader {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
@@ -39,6 +40,14 @@ public class CsvSourceReader implements SourceReader {
     private static final int DEFAULT_PREVIEW_SIZE = 100;
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
+    /**
+     * 从数据源读取记录并更新执行上下文中的已处理计数。
+     *
+     * @param sourceConfig 源配置
+     * @param context      执行上下文
+     * @return 读取到的记录列表
+     * @throws Exception 连接、查询或解析失败时抛出
+     */
     @Override
     public List<Record> read(com.dataflow.ai.domain.vo.SourceConfig sourceConfig, ExecutionContext context)
             throws Exception {
@@ -48,7 +57,7 @@ public class CsvSourceReader implements SourceReader {
         log.info("Reading from CSV source: dataSourceId={}, type={}", dataSourceId, type);
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceService.findById(dataSourceId)
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new SourceException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, type, "Data source not found"));
@@ -130,24 +139,49 @@ public class CsvSourceReader implements SourceReader {
         return records;
     }
 
+    /**
+     * 返回本读取器支持的数据源类型。
+     *
+     * @return 数据源类型枚举
+     */
     @Override
     public DataSourceType getSupportedType() {
         return DataSourceType.CSV;
     }
 
+    /**
+     * 测试数据源是否可连接或文件是否可读。
+     *
+     * @param dataSource 数据源实体
+     * @return 连接成功返回 true
+     */
     @Override
-    public boolean testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());
         String filePath = (String) config.get("filePath");
 
-        if (filePath == null) {
-            return false;
+        if (filePath == null || filePath.isBlank()) {
+            return ConnectionTestResult.failure("连接配置缺少 filePath");
         }
 
         Path path = Paths.get(filePath);
-        return Files.exists(path) && Files.isReadable(path);
+        if (!Files.exists(path)) {
+            return ConnectionTestResult.failure("文件不存在: " + filePath);
+        }
+        if (!Files.isReadable(path)) {
+            return ConnectionTestResult.failure("文件不可读: " + filePath);
+        }
+        return ConnectionTestResult.success();
     }
 
+    /**
+     * 采样预览数据源中的部分记录。
+     *
+     * @param sourceConfig 源配置
+     * @param sampleSize   最大采样条数
+     * @return 预览记录列表
+     * @throws Exception 读取失败时抛出
+     */
     @Override
     public List<Record> preview(com.dataflow.ai.domain.vo.SourceConfig sourceConfig, int sampleSize)
             throws Exception {

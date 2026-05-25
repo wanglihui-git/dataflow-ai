@@ -18,18 +18,38 @@ public class SourceException extends ExecutionException {
      */
     private final DataSourceType sourceType;
 
+    /**
+     * 仅包含错误消息的构造器。
+     *
+     * @param message 错误描述
+     */
     public SourceException(String message) {
         super(message);
         this.dataSourceId = null;
         this.sourceType = null;
     }
 
+    /**
+     * 包含错误消息与根因的构造器。
+     *
+     * @param message 错误描述
+     * @param cause   根因异常
+     */
     public SourceException(String message, Throwable cause) {
         super(message, cause);
         this.dataSourceId = null;
         this.sourceType = null;
     }
 
+    /**
+     * 绑定执行上下文与数据源信息的构造器。
+     *
+     * @param executionId  执行运行 ID
+     * @param pipelineId   Pipeline ID
+     * @param dataSourceId 数据源 ID
+     * @param sourceType   数据源类型
+     * @param message      错误描述
+     */
     public SourceException(String executionId, String pipelineId, String dataSourceId,
                             DataSourceType sourceType, String message) {
         super(executionId, pipelineId, "SOURCE_ERROR", message);
@@ -37,6 +57,16 @@ public class SourceException extends ExecutionException {
         this.sourceType = sourceType;
     }
 
+    /**
+     * 完整上下文并携带根因的构造器。
+     *
+     * @param executionId  执行运行 ID
+     * @param pipelineId   Pipeline ID
+     * @param dataSourceId 数据源 ID
+     * @param sourceType   数据源类型
+     * @param message      错误描述
+     * @param cause        根因异常
+     */
     public SourceException(String executionId, String pipelineId, String dataSourceId,
                             DataSourceType sourceType, String message, Throwable cause) {
         super(executionId, pipelineId, "SOURCE_ERROR", message, cause);
@@ -44,14 +74,24 @@ public class SourceException extends ExecutionException {
         this.sourceType = sourceType;
     }
 
+    /**
+     * @return 关联的数据源 ID
+     */
     public String getDataSourceId() {
         return dataSourceId;
     }
 
+    /**
+     * @return 数据源类型
+     */
     public DataSourceType getSourceType() {
         return sourceType;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>附加数据源 ID 与类型信息。</p>
+     */
     @Override
     public String getDetailedMessage() {
         StringBuilder sb = new StringBuilder();

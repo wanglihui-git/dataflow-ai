@@ -10,6 +10,7 @@ import jakarta.persistence.Converter;
 @Converter
 public class SinkConfigConverter extends AbstractJsonConverter<SinkConfig> {
 
+    /** {@inheritDoc} */
     @Override
     protected TypeReference<SinkConfig> typeReference() {
         return new TypeReference<>() {};

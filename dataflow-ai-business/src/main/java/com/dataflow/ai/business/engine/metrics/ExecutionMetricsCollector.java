@@ -2,7 +2,10 @@ package com.dataflow.ai.business.engine.metrics;
 
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionResult;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -19,13 +22,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ExecutionMetricsCollector {
 
-    /**
-     * 指标存储
-     */
     private final Map<String, ExecutionMetrics> metricsMap = new ConcurrentHashMap<>();
 
+    private final MeterRegistry meterRegistry;
+
     /**
-     * 初始化指标收集
+     * 构造指标收集器；{@link MeterRegistry} 可选，未注入时仅收集内存指标。
+     *
+     * @param meterRegistry Micrometer 注册表，可为 null
+     */
+    public ExecutionMetricsCollector(@Autowired(required = false) MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+
+    /**
+     * 为一次执行创建内存指标快照并记录开始时间。
+     *
+     * @param context 执行上下文（使用 runId 作为键）
      */
     public void initialize(ExecutionContext context) {
         ExecutionMetrics metrics = new ExecutionMetrics();
@@ -159,7 +172,10 @@ public class ExecutionMetricsCollector {
     }
 
     /**
-     * 收集最终指标
+     * 汇总本次执行的时间、吞吐、转换节点与内存指标，并发布到 Micrometer。
+     *
+     * @param context 执行上下文
+     * @return 最终指标 Map；无快照时返回空 Map
      */
     public Map<String, Object> collectFinalMetrics(ExecutionContext context) {
         ExecutionMetrics metrics = metricsMap.get(context.getRunId());
@@ -229,10 +245,33 @@ public class ExecutionMetricsCollector {
 
         log.debug("Final metrics collected: runId={}, totalMetrics={}", context.getRunId(), finalMetrics.size());
 
-        // 清理指标
+        publishMicrometer(context, finalMetrics);
+
         metricsMap.remove(context.getRunId());
 
         return finalMetrics;
+    }
+
+    /**
+     * 将汇总指标发布到 Micrometer（计数器与计时器）。
+     *
+     * @param context      执行上下文
+     * @param finalMetrics 已汇总的最终指标 Map
+     */
+    private void publishMicrometer(ExecutionContext context, Map<String, Object> finalMetrics) {
+        if (meterRegistry == null) {
+            return;
+        }
+        // 步骤1：按 pipeline_id 打标签
+        String pipelineId = context.getPipeline().getId();
+        Tags tags = Tags.of("pipeline_id", pipelineId);
+        long records = context.getRecordsProcessed().get();
+        meterRegistry.counter("dataflow.pipeline.records.processed", tags).increment(records);
+        Object durationMs = finalMetrics.get("durationMs");
+        if (durationMs instanceof Number n) {
+            meterRegistry.timer("dataflow.pipeline.execution.duration", tags)
+                    .record(java.time.Duration.ofMillis(n.longValue()));
+        }
     }
 
     /**
@@ -285,7 +324,7 @@ public class ExecutionMetricsCollector {
     }
 
     /**
-     * 执行指标类
+     * 单次 Pipeline 执行的内存指标快照（源/汇/转换各阶段耗时与计数）。
      */
     private static class ExecutionMetrics {
         private String runId;
@@ -390,7 +429,7 @@ public class ExecutionMetricsCollector {
     }
 
     /**
-     * 转换指标类
+     * 单个 Transform 节点的处理耗时与记录数。
      */
     private static class TransformMetric {
         private String nodeId;

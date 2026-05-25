@@ -61,7 +61,9 @@ public class RetryContext {
     private boolean exponentialBackoff = true;
 
     /**
-     * 计算下一次重试的等待时间
+     * 根据当前尝试次数计算下一次重试前的等待时间（毫秒）。
+     *
+     * @return 等待毫秒数，受 {@link #maxRetryIntervalMs} 上限约束
      */
     public long calculateNextRetryInterval() {
         if (!exponentialBackoff) {
@@ -72,15 +74,15 @@ public class RetryContext {
         return Math.min(interval, maxRetryIntervalMs);
     }
 
-    /**
-     * 增加尝试次数
-     */
+    /** 将 {@link #currentAttempt} 加一。 */
     public void incrementAttempt() {
         this.currentAttempt++;
     }
 
     /**
-     * 创建子上下文
+     * 浅拷贝当前上下文，用于嵌套重试场景。
+     *
+     * @return 字段值相同的新实例
      */
     public RetryContext copy() {
         return RetryContext.builder()

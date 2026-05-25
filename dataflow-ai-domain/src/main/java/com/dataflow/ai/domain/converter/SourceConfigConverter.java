@@ -10,6 +10,7 @@ import jakarta.persistence.Converter;
 @Converter
 public class SourceConfigConverter extends AbstractJsonConverter<SourceConfig> {
 
+    /** {@inheritDoc} */
     @Override
     protected TypeReference<SourceConfig> typeReference() {
         return new TypeReference<>() {};

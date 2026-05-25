@@ -1,194 +1,146 @@
 <template>
-  <div class="data-source-list">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>数据源列表</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新建数据源
-          </el-button>
-        </div>
-      </template>
+  <div class="page-container">
+    <PageHeader title="数据源" subtitle="管理连接与凭证">
+      <el-button v-if="auth.canWrite" type="primary" @click="showCreate = true">添加数据源</el-button>
+    </PageHeader>
 
-      <el-table :data="dataSources" v-loading="loading" stripe>
-        <el-table-column prop="name" label="名称" min-width="200" />
-        <el-table-column prop="type" label="类型" width="120">
+    <div class="card-panel filters">
+      <el-input v-model="keyword" placeholder="搜索名称" clearable style="width: 200px" />
+      <el-select v-model="typeFilter" placeholder="类型" clearable style="width: 140px">
+        <el-option v-for="t in types" :key="t" :label="t" :value="t" />
+      </el-select>
+      <el-button @click="load">查询</el-button>
+    </div>
+
+    <div class="card-panel" v-loading="loading">
+      <el-table :data="filtered">
+        <el-table-column prop="name" label="名称" />
+        <el-table-column prop="type" label="类型" width="120" />
+        <el-table-column label="连接状态" width="120">
           <template #default="{ row }">
-            <el-tag>{{ row.type }}</el-tag>
+            <StatusBadge :status="testStatus[row.id] || 'unknown'" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdBy" label="创建者" width="150" />
-        <el-table-column prop="createdAt" label="创建时间" width="180">
+        <el-table-column prop="ownerId" label="创建者" width="100" />
+        <el-table-column label="操作" width="280">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="updatedAt" label="更新时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.updatedAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button type="success" link size="small" @click="handleTestConnection(row.id)">
-              测试连接
-            </el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <el-button link @click="handleTest(row.id)">测试</el-button>
+            <el-button link type="primary" @click="router.push(`/data-sources/${row.id}`)">编辑</el-button>
+            <el-button link @click="handlePreview(row.id)">预览</el-button>
+            <el-button v-if="auth.canWrite" link type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
 
-    <!-- 新建数据源对话框 -->
-    <el-dialog v-model="createDialogVisible" title="新建数据源" width="600px">
-      <el-form :model="createForm" label-width="100px">
-        <el-form-item label="名称">
-          <el-input v-model="createForm.name" placeholder="请输入数据源名称" />
+    <el-dialog v-model="showCreate" title="创建数据源" width="520px">
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="名称" required>
+          <el-input v-model="form.name" />
         </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="createForm.type" placeholder="请选择类型" style="width: 100%">
-            <el-option label="MySQL" value="MYSQL" />
-            <el-option label="PostgreSQL" value="POSTGRES" />
-            <el-option label="API" value="API" />
-            <el-option label="Kafka" value="KAFKA" />
-            <el-option label="CSV" value="CSV" />
+        <el-form-item label="类型" required>
+          <el-select v-model="form.type" style="width: 100%">
+            <el-option v-for="t in types" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
         <el-form-item label="连接配置">
-          <el-input
-            v-model="connectionConfigStr"
-            type="textarea"
-            :rows="4"
-            placeholder='请输入 JSON 配置，例如: {"host": "localhost", "port": 3306}'
-          />
+          <el-input v-model="configJson" type="textarea" :rows="6" placeholder='{"host":"localhost"}' />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="createLoading" @click="submitCreate">
-          确定
-        </el-button>
+        <el-button @click="showCreate = false">取消</el-button>
+        <el-button type="primary" @click="submitCreate">创建</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { DataSource } from '@/types'
-import { dataSourceApi } from '@/api/dataSource'
-import {Plus} from "@element-plus/icons-vue";
+import * as dataSourceApi from '@/api/dataSource'
+import { useAuthStore } from '@/stores/auth'
+import type { DataSource, DataSourceType } from '@/types'
+import PageHeader from '@/components/Common/PageHeader.vue'
+import StatusBadge from '@/components/Common/StatusBadge.vue'
 
+const router = useRouter()
+const auth = useAuthStore()
+const types: DataSourceType[] = ['MYSQL', 'POSTGRES', 'API', 'KAFKA', 'CSV']
 const loading = ref(false)
-const createLoading = ref(false)
-const dataSources = ref<DataSource[]>([])
-const createDialogVisible = ref(false)
+const items = ref<DataSource[]>([])
+const testStatus = ref<Record<string, string>>({})
+const keyword = ref('')
+const typeFilter = ref('')
+const showCreate = ref(false)
+const configJson = ref('{}')
+const form = reactive({ name: '', type: 'MYSQL' as DataSourceType })
 
-const createForm = reactive({
-  name: '',
-  type: '' as DataSource['type'] | '',
-  connectionConfig: {} as Record<string, unknown>
+const filtered = computed(() => {
+  return items.value.filter((d) => {
+    if (keyword.value && !d.name.includes(keyword.value)) return false
+    if (typeFilter.value && d.type !== typeFilter.value) return false
+    return true
+  })
 })
 
-const connectionConfigStr = computed({
-  get: () => JSON.stringify(createForm.connectionConfig, null, 2),
-  set: (val: string) => {
-    try {
-      createForm.connectionConfig = val ? JSON.parse(val) : {}
-    } catch {
-      // 无效的 JSON，忽略
-    }
-  }
-})
-
-const loadDataSources = async () => {
+async function load() {
   loading.value = true
   try {
-    const res = await dataSourceApi.getList()
-    dataSources.value = res.data
-  } catch (err) {
-    ElMessage.error('加载数据源列表失败')
+    const res = await dataSourceApi.listDataSources()
+    items.value = res.content
   } finally {
     loading.value = false
   }
 }
 
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-const handleTestConnection = async (id: string) => {
+async function handleTest(id: string) {
   try {
-    await dataSourceApi.testConnection(id)
-    ElMessage.success('连接测试成功')
-  } catch (err) {
-    ElMessage.error('连接测试失败')
+    const res = await dataSourceApi.testConnection(id)
+    testStatus.value[id] = (res.success as boolean) ? 'SUCCESS' : 'FAILED'
+    ElMessage.success('测试完成')
+  } catch {
+    testStatus.value[id] = 'FAILED'
   }
 }
 
-const handleDelete = async (row: DataSource) => {
+async function handlePreview(id: string) {
+  const res = await dataSourceApi.previewData(id, { sampleSize: 10 })
+  ElMessageBox.alert(JSON.stringify(res, null, 2), '数据预览')
+}
+
+async function submitCreate() {
+  let connectionConfig = {}
   try {
-    await ElMessageBox.confirm(`确定要删除数据源 "${row.name}" 吗？`, '警告', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await dataSourceApi.delete(row.id)
-    ElMessage.success('删除成功')
-    loadDataSources()
-  } catch (err: unknown) {
-    if (err !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
-}
-
-const handleCreate = () => {
-  createForm.name = ''
-  createForm.type = ''
-  createForm.connectionConfig = {}
-  createDialogVisible.value = true
-}
-
-const submitCreate = async () => {
-  if (!createForm.name) {
-    ElMessage.warning('请输入数据源名称')
+    connectionConfig = JSON.parse(configJson.value)
+  } catch {
+    ElMessage.error('连接配置 JSON 无效')
     return
   }
-  if (!createForm.type) {
-    ElMessage.warning('请选择数据源类型')
-    return
-  }
-  createLoading.value = true
-  try {
-    await dataSourceApi.create({
-      name: createForm.name,
-      type: createForm.type as DataSource['type'],
-      connectionConfig: createForm.connectionConfig
-    })
-    ElMessage.success('创建成功')
-    createDialogVisible.value = false
-    loadDataSources()
-  } catch (err) {
-    ElMessage.error('创建失败')
-  } finally {
-    createLoading.value = false
-  }
+  await dataSourceApi.createDataSource({
+    name: form.name,
+    type: form.type,
+    connectionConfig
+  })
+  showCreate.value = false
+  ElMessage.success('已创建')
+  load()
 }
 
-onMounted(() => {
-  loadDataSources()
-})
+async function handleDelete(id: string) {
+  await ElMessageBox.confirm('确定删除？', '警告', { type: 'warning' })
+  await dataSourceApi.deleteDataSource(id)
+  load()
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
-.card-header {
+.filters {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 </style>

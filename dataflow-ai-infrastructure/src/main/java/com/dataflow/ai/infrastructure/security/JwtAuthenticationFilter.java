@@ -17,7 +17,8 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * JWT 认证过滤器：从请求头中解析 Bearer Token，校验后写入 SecurityContext
+ * JWT 认证过滤器：从 {@code Authorization: Bearer} 请求头解析令牌，
+ * 校验通过后将用户 ID 与 {@code ROLE_*} 权限写入 {@link org.springframework.security.core.context.SecurityContextHolder}。
  */
 @Slf4j
 @Component
@@ -29,12 +30,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
 
+    /**
+     * 每个请求执行一次：尝试 JWT 认证，无论成败均继续过滤器链。
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
+            // 1. 从 Header 提取 Bearer Token
             String token = extractToken(request);
+            // 2. 校验签名与有效期后构建 Authentication
             if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
                 String userId = jwtProvider.getUserIdFromToken(token);
                 String username = jwtProvider.getUsernameFromToken(token);

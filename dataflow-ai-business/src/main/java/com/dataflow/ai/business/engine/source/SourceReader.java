@@ -4,6 +4,7 @@ import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
 import com.dataflow.ai.domain.enums.DataSourceType;
+import com.dataflow.ai.domain.vo.ConnectionTestResult;
 import com.dataflow.ai.domain.vo.SourceConfig;
 
 import java.util.List;
@@ -35,9 +36,9 @@ public interface SourceReader {
      * 测试数据源连接
      *
      * @param dataSource 数据源配置
-     * @return 是否连接成功
+     * @return 连通性测试结果（含失败原因）
      */
-    boolean testConnection(DataSource dataSource);
+    ConnectionTestResult testConnection(DataSource dataSource);
 
     /**
      * 预览数据源数据（用于测试和验证）

@@ -99,7 +99,9 @@ dataflow-ai-common         # 共享工具类、常量、异常
 - `DB_USERNAME`, `DB_PASSWORD` - 数据库凭据
 - `JWT_SECRET` - JWT 签名密钥，最少 256 位
 - `ENCRYPTION_KEY` - 数据加密密钥，32 字节
-- `OPENAI_API_KEY` 或 `ZHIPU_API_KEY` - AI 功能所需
+- `QIANWEN_API_KEY` 或 `DASHSCOPE_API_KEY` - 通义千问（默认 LLM/Embedding）
+- `OPENAI_API_KEY` 或 `ZHIPU_API_KEY` - 切换 `app.llm.provider` / `app.embedding.provider` 时使用
+- `ENCRYPTION_KEY` - 须恰好 32 字节 UTF-8
 
 ## 配置文件
 
@@ -113,11 +115,12 @@ dataflow-ai-common         # 共享工具类、常量、异常
 
 ## LLM 和 AI 集成
 
-应用通过 `app.llm.provider` 配置支持两个 LLM 提供商：
-- `openai`: 使用 OpenAI API
-- `zhipu`: 使用智谱 AI API
+应用通过 `app.llm.provider` 配置支持三个 LLM 提供商（**默认 `qianwen`**）：
+- `qianwen`: 通义千问（DashScope 原生 API，`/services/aigc/text-generation/generation`）
+- `openai`: OpenAI API
+- `zhipu`: 智谱 AI API
 
-向量相似性搜索的 Embedding 也通过 `app.embedding.provider` 支持这两个提供商。
+向量相似性搜索的 Embedding 通过 `app.embedding.provider` 支持上述三家（默认与 LLM 一致为 `qianwen`，维度见 `app.embedding.*.dimensions`）。
 
 ## 核心领域实体
 

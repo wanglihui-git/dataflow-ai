@@ -42,6 +42,7 @@
         <hutool.version>5.8.25</hutool.version>
         <knife4j.version>4.5.0</knife4j.version>
         <testcontainers.version>1.19.5</testcontainers.version>
+        <mysql.version>8.0.16</mysql.version>
     </properties>
 
     <dependencyManagement>
@@ -98,6 +99,11 @@
                 <groupId>com.pgvector</groupId>
                 <artifactId>pgvector</artifactId>
                 <version>${pgvector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.version}</version>
             </dependency>
 
             <!-- 工具类 -->

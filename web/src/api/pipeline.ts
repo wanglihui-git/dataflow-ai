@@ -1,28 +1,41 @@
-import api from './index'
-import type { Pipeline, ExecutionRun } from '@/types'
+import http, { unwrap } from './index'
+import type { ApiResponse, ExecutionRun, PageResponse, Pipeline } from '@/types'
 
-export const pipelineApi = {
-  getList() {
-    return api.get<Pipeline[]>('/v1/pipelines')
-  },
-  getById(id: string) {
-    return api.get<Pipeline>(`/v1/pipelines/${id}`)
-  },
-  create(data: Partial<Pipeline>) {
-    return api.post<Pipeline>('/v1/pipelines', data)
-  },
-  update(id: string, data: Partial<Pipeline>) {
-    return api.put<Pipeline>(`/v1/pipelines/${id}`, data)
-  },
-  delete(id: string) {
-    return api.delete(`/v1/pipelines/${id}`)
-  },
-  execute(id: string) {
-    return api.post(`/v1/pipelines/${id}/execute`)
-  },
-  getExecutionRuns(pipelineId: string) {
-    return api.get<ExecutionRun[]>(`/v1/execution/runs`, {
-      params: { pipelineId }
-    })
-  }
+export async function listPipelines(params?: { name?: string; page?: number; size?: number }) {
+  const res = await http.get<ApiResponse<PageResponse<Pipeline>>>('/v1/pipelines', { params })
+  return unwrap(res)
+}
+
+export async function getPipeline(id: string) {
+  const res = await http.get<ApiResponse<Pipeline>>(`/v1/pipelines/${id}`)
+  return unwrap(res)
+}
+
+export async function createPipeline(body: Record<string, unknown>) {
+  const res = await http.post<ApiResponse<Pipeline>>('/v1/pipelines', body)
+  return unwrap(res)
+}
+
+export async function updatePipeline(id: string, body: Record<string, unknown>) {
+  const res = await http.put<ApiResponse<Pipeline>>(`/v1/pipelines/${id}`, body)
+  return unwrap(res)
+}
+
+export async function deletePipeline(id: string) {
+  await http.delete(`/v1/pipelines/${id}`)
+}
+
+export async function runPipeline(id: string) {
+  const res = await http.post<ApiResponse<ExecutionRun>>(`/v1/pipelines/${id}/run`)
+  return unwrap(res)
+}
+
+export async function listPipelineRuns(id: string) {
+  const res = await http.get<ApiResponse<ExecutionRun[]>>(`/v1/pipelines/${id}/runs`)
+  return unwrap(res)
+}
+
+export async function previewPipeline(id: string) {
+  const res = await http.get<ApiResponse<Record<string, unknown>>>(`/v1/pipelines/${id}/preview`)
+  return unwrap(res)
 }

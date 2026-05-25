@@ -1,187 +1,124 @@
 <template>
-  <div class="pipeline-detail">
-    <el-page-header @back="goBack" content="Pipeline 详情" />
+  <div class="page-container" v-loading="loading">
+    <PageHeader v-if="pipeline" :title="pipeline.name" :subtitle="pipeline.description">
+      <StatusBadge :status="pipeline.status" />
+      <el-select v-model="versionLabel" style="width: 200px" disabled>
+        <el-option :label="versionLabel" :value="versionLabel" />
+      </el-select>
+      <el-button v-if="auth.canWrite" @click="router.push(`/pipelines/${id}/edit`)">编辑</el-button>
+      <el-button v-if="auth.canWrite" @click="handleClone">克隆</el-button>
+      <el-button type="success" @click="handleRun">运行</el-button>
+      <el-button v-if="auth.canWrite" type="danger" @click="handleDelete">删除</el-button>
+    </PageHeader>
 
-    <el-card v-loading="loading" style="margin-top: 20px">
-      <template #header>
-        <div class="card-header">
-          <span>{{ pipeline?.name }}</span>
-          <div class="actions">
-            <el-button type="primary" @click="handleExecute" :disabled="pipeline?.status === 'RUNNING'">
-              <el-icon><VideoPlay /></el-icon>
-              执行
-            </el-button>
-            <el-button @click="goBack">
-              <el-icon><ArrowLeft /></el-icon>
-              返回
-            </el-button>
-          </div>
+    <el-row :gutter="16" v-if="pipeline">
+      <el-col :span="10">
+        <div class="card-panel">
+          <h3>概要</h3>
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item label="权限">{{ pipeline.permissionLevel }}</el-descriptions-item>
+            <el-descriptions-item label="负责人">{{ pipeline.ownerId }}</el-descriptions-item>
+            <el-descriptions-item label="创建">{{ pipeline.createdAt }}</el-descriptions-item>
+            <el-descriptions-item label="更新">{{ pipeline.updatedAt }}</el-descriptions-item>
+          </el-descriptions>
+          <el-button type="primary" class="editor-cta" @click="router.push(`/pipelines/${id}/edit`)">
+            打开可视化编辑器
+          </el-button>
         </div>
-      </template>
-
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="ID">{{ pipeline?.id }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(pipeline?.status || '')">{{ pipeline?.status }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="描述" :span="2">{{ pipeline?.description || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="权限级别">{{ pipeline?.permissionLevel }}</el-descriptions-item>
-        <el-descriptions-item label="所有者ID">{{ pipeline?.ownerId }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ formatDate(pipeline?.createdAt) }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ formatDate(pipeline?.updatedAt) }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>Source 配置</span>
-          </template>
-          <pre class="config-json">{{ JSON.stringify(pipeline?.source, null, 2) }}</pre>
-        </el-card>
+        <div class="card-panel" v-if="stats">
+          <h3>执行统计</h3>
+          <el-statistic title="总次数" :value="stats.total" />
+          <el-statistic title="成功率" :value="(stats.successRate * 100).toFixed(1) + '%'" />
+        </div>
       </el-col>
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>Transforms ({{ pipeline?.transforms?.length || 0 }})</span>
-          </template>
-          <pre class="config-json">{{ JSON.stringify(pipeline?.transforms, null, 2) }}</pre>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>Sink 配置</span>
-          </template>
-          <pre class="config-json">{{ JSON.stringify(pipeline?.sink, null, 2) }}</pre>
-        </el-card>
+      <el-col :span="14">
+        <div class="card-panel">
+          <h3>最近运行</h3>
+          <el-timeline v-if="runs.length">
+            <el-timeline-item v-for="r in runs" :key="r.id" :timestamp="r.startTime">
+              <StatusBadge :status="r.status" />
+              <el-button link @click="router.push(`/executions/${r.id}`)">查看</el-button>
+            </el-timeline-item>
+          </el-timeline>
+          <EmptyState v-else title="暂无运行记录" />
+        </div>
       </el-col>
     </el-row>
-
-    <el-card style="margin-top: 20px">
-      <template #header>
-        <span>执行记录</span>
-      </template>
-      <el-table :data="executionRuns" stripe size="small">
-        <el-table-column prop="id" label="执行ID" width="120" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="startTime" label="开始时间" width="180">
-          <template #default="{ row }">
-            {{ row.startTime ? formatDate(row.startTime) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="endTime" label="结束时间" width="180">
-          <template #default="{ row }">
-            {{ row.endTime ? formatDate(row.endTime) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="errorMessage" label="错误信息" show-overflow-tooltip />
-      </el-table>
-    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { Pipeline, ExecutionRun } from '@/types'
-import { pipelineApi } from '@/api/pipeline'
-import {ArrowLeft, VideoPlay} from "@element-plus/icons-vue";
+import * as pipelineApi from '@/api/pipeline'
+import * as executionApi from '@/api/execution'
+import { useAuthStore } from '@/stores/auth'
+import type { ExecutionRun, Pipeline } from '@/types'
+import PageHeader from '@/components/Common/PageHeader.vue'
+import StatusBadge from '@/components/Common/StatusBadge.vue'
+import EmptyState from '@/components/Common/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
-
+const auth = useAuthStore()
+const id = route.params.id as string
 const loading = ref(false)
 const pipeline = ref<Pipeline | null>(null)
-const executionRuns = ref<ExecutionRun[]>([])
+const runs = ref<ExecutionRun[]>([])
+const stats = ref<Record<string, number> | null>(null)
 
-const pipelineId = route.params.id as string
+const versionLabel = computed(() => `当前版本 · ${pipeline.value?.updatedAt || '—'}`)
 
-const loadPipeline = async () => {
+async function load() {
   loading.value = true
   try {
-    const res = await pipelineApi.getById(pipelineId)
-    pipeline.value = res.data
-  } catch (err) {
-    ElMessage.error('加载 Pipeline 详情失败')
+    pipeline.value = await pipelineApi.getPipeline(id)
+    runs.value = (await pipelineApi.listPipelineRuns(id)).slice(0, 10)
+    stats.value = await executionApi.getPipelineStats(id)
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false
   }
 }
 
-const loadExecutionRuns = async () => {
-  try {
-    const res = await pipelineApi.getExecutionRuns(pipelineId)
-    executionRuns.value = res.data
-  } catch (err) {
-    console.error('加载执行记录失败', err)
-  }
+async function handleRun() {
+  const run = await pipelineApi.runPipeline(id)
+  router.push(`/executions/${run.id}`)
 }
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    RUNNING: 'success',
-    SUCCESS: 'success',
-    FAILED: 'danger',
-    PENDING: 'warning',
-    CANCELLED: 'info'
-  }
-  return map[status] || 'info'
+async function handleClone() {
+  if (!pipeline.value) return
+  const p = pipeline.value
+  const created = await pipelineApi.createPipeline({
+    name: `${p.name}-copy`,
+    description: p.description,
+    source: p.source,
+    transforms: p.transforms,
+    sink: p.sink,
+    schedule: p.schedule,
+    permissionLevel: p.permissionLevel
+  })
+  ElMessage.success('已克隆')
+  router.push(`/pipelines/${created.id}/edit`)
 }
 
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-const goBack = () => {
+async function handleDelete() {
+  await ElMessageBox.confirm('确定删除？', '警告', { type: 'warning' })
+  await pipelineApi.deletePipeline(id)
   router.push('/pipelines')
 }
 
-const handleExecute = async () => {
-  try {
-    await ElMessageBox.confirm('确定要执行此 Pipeline 吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await pipelineApi.execute(pipelineId)
-    ElMessage.success('Pipeline 已启动执行')
-    loadPipeline()
-  } catch (err: unknown) {
-    if (err !== 'cancel') {
-      ElMessage.error('执行失败')
-    }
-  }
-}
-
-onMounted(() => {
-  loadPipeline()
-  loadExecutionRuns()
-})
+onMounted(load)
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.editor-cta {
+  margin-top: 16px;
+  width: 100%;
 }
-
-.config-json {
-  background: #f5f7fa;
-  padding: 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  overflow-x: auto;
-  max-height: 300px;
-  overflow-y: auto;
-  margin: 0;
+h3 {
+  margin: 0 0 12px;
 }
 </style>

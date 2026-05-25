@@ -98,8 +98,8 @@ mvn spring-boot:run
 
 应用启动后访问：
 
-- API 文档: http://localhost:8080/api/doc.html
-- 健康检查: http://localhost:8080/api/actuator/health
+- API 文档: http://localhost:7681/api/doc.html
+- 健康检查: http://localhost:7681/api/actuator/health
 
 ## API 文档
 

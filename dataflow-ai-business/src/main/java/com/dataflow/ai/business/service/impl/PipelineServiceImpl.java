@@ -1,11 +1,16 @@
 package com.dataflow.ai.business.service.impl;
 
-import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.business.engine.preview.PipelinePreviewExecutor;
 import com.dataflow.ai.business.repository.PipelineRepository;
 import com.dataflow.ai.business.service.ExecutionService;
 import com.dataflow.ai.business.service.PipelineService;
+import com.dataflow.ai.business.service.UserService;
+import com.dataflow.ai.domain.response.PageResponse;
+import org.springframework.data.domain.Page;
 import com.dataflow.ai.domain.entity.ExecutionRun;
 import com.dataflow.ai.domain.entity.Pipeline;
+import com.dataflow.ai.domain.request.CreatePipelineRequest;
+import com.dataflow.ai.domain.request.UpdatePipelineRequest;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Pipeline服务实现
+ * {@link PipelineService} 实现：Pipeline CRUD、权限范围查询、执行委托与转换预览。
  */
 @Slf4j
 @Service
@@ -31,21 +36,45 @@ public class PipelineServiceImpl implements PipelineService {
     @Resource
     private ExecutionService executionService;
 
+    @Resource
+    private PipelinePreviewExecutor pipelinePreviewExecutor;
+
+    @Resource
+    private UserService userService;
+
+    /** {@inheritDoc} */
     @Override
     public Optional<Pipeline> findById(String id) {
         return pipelineRepository.findById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Pipeline> findByOwnerId(String ownerId) {
         return pipelineRepository.findByOwnerId(ownerId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Pipeline> findByUser(String userId) {
-        return pipelineRepository.findByUser(userId);
+        return userService.findById(userId)
+                .map(u -> pipelineRepository.findByUser(userId, u.getRole().name(), u.getDepartment()))
+                .orElse(List.of());
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public PageResponse<Pipeline> findByUserPage(String userId, String name, org.springframework.data.domain.Pageable pageable) {
+        return userService.findById(userId)
+                .map(u -> {
+                    Page<Pipeline> page = pipelineRepository.findAccessiblePage(
+                            userId, u.getRole().name(), u.getDepartment(), name, pageable);
+                    return PageResponse.of(page.getContent(), page.getNumber(), page.getSize(), page.getTotalElements());
+                })
+                .orElse(PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
+    }
+
+    /** {@inheritDoc} */
     @Override
     public Pipeline createPipeline(CreatePipelineRequest request, String ownerId) {
         Pipeline pipeline = Pipeline.builder()
@@ -57,7 +86,10 @@ public class PipelineServiceImpl implements PipelineService {
                 .sink(request.getSink())
                 .schedule(request.getSchedule())
                 .ownerId(ownerId)
-                .permissionLevel(Pipeline.PermissionLevel.PRIVATE)
+                .permissionLevel(resolvePermissionLevel(request.getPermissionLevel()))
+                .allowedRoles(request.getAllowedRoles())
+                .allowedUsers(request.getAllowedUsers())
+                .allowedDepartments(request.getAllowedDepartments())
                 .status("active")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -65,18 +97,55 @@ public class PipelineServiceImpl implements PipelineService {
         return pipelineRepository.save(pipeline);
     }
 
+    /** {@inheritDoc} */
     @Override
-    public Pipeline updatePipeline(String id, Pipeline pipeline) {
-        pipeline.setId(id);
-        pipeline.setUpdatedAt(LocalDateTime.now());
-        return pipelineRepository.save(pipeline);
+    public Pipeline updatePipeline(String id, UpdatePipelineRequest request) {
+        Pipeline existing = pipelineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pipeline不存在"));
+        if (request.getName() != null) {
+            existing.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            existing.setDescription(request.getDescription());
+        }
+        if (request.getSource() != null) {
+            existing.setSource(request.getSource());
+        }
+        if (request.getTransforms() != null) {
+            existing.setTransforms(request.getTransforms());
+        }
+        if (request.getSink() != null) {
+            existing.setSink(request.getSink());
+        }
+        if (request.getSchedule() != null) {
+            existing.setSchedule(request.getSchedule());
+        }
+        if (request.getPermissionLevel() != null) {
+            existing.setPermissionLevel(resolvePermissionLevel(request.getPermissionLevel()));
+        }
+        if (request.getAllowedRoles() != null) {
+            existing.setAllowedRoles(request.getAllowedRoles());
+        }
+        if (request.getAllowedUsers() != null) {
+            existing.setAllowedUsers(request.getAllowedUsers());
+        }
+        if (request.getAllowedDepartments() != null) {
+            existing.setAllowedDepartments(request.getAllowedDepartments());
+        }
+        if (request.getStatus() != null) {
+            existing.setStatus(request.getStatus());
+        }
+        existing.setUpdatedAt(LocalDateTime.now());
+        return pipelineRepository.save(existing);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void deletePipeline(String id) {
         pipelineRepository.deleteById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public ExecutionRun executePipeline(String pipelineId, String triggeredBy) {
         Optional<Pipeline> pipelineOpt = pipelineRepository.findById(pipelineId);
@@ -88,28 +157,40 @@ public class PipelineServiceImpl implements PipelineService {
         return run;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void cancelExecution(String runId) {
         executionService.cancelExecution(runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<ExecutionRun> findExecutionRuns(String pipelineId) {
         return executionService.findByPipelineId(pipelineId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<ExecutionRun> findExecutionRunById(String runId) {
         return executionService.findById(runId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, Object> previewTransform(Pipeline pipeline, int sampleSize) {
-        // TODO: 实现实际的转换预览逻辑
+        if (sampleSize <= 0) {
+            sampleSize = 10;
+        }
         log.info("Previewing transform for pipeline: {}, sampleSize: {}", pipeline.getName(), sampleSize);
-        return Map.of();
+        try {
+            return pipelinePreviewExecutor.preview(pipeline, sampleSize);
+        } catch (Exception e) {
+            log.error("Pipeline preview failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Pipeline 预览失败: " + e.getMessage(), e);
+        }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updatePipelineStatus(String id, String status) {
         Optional<Pipeline> pipelineOpt = pipelineRepository.findById(id);
@@ -120,5 +201,22 @@ public class PipelineServiceImpl implements PipelineService {
         pipeline.setStatus(status);
         pipeline.setUpdatedAt(LocalDateTime.now());
         pipelineRepository.save(pipeline);
+    }
+
+    /**
+     * 将请求中的权限级别字符串解析为枚举，非法或空值时默认为 PRIVATE。
+     *
+     * @param level 权限级别字符串
+     * @return 解析后的 {@link Pipeline.PermissionLevel}
+     */
+    private Pipeline.PermissionLevel resolvePermissionLevel(String level) {
+        if (level == null || level.isBlank()) {
+            return Pipeline.PermissionLevel.PRIVATE;
+        }
+        try {
+            return Pipeline.PermissionLevel.valueOf(level.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Pipeline.PermissionLevel.PRIVATE;
+        }
     }
 }

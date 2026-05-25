@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * 密码编码器
+ * 密码编码器：基于 BCrypt 对用户密码进行单向哈希与校验。
+ * <p>实现 Spring Security {@link org.springframework.security.crypto.password.PasswordEncoder} 接口，供注册、登录流程注入使用。
  */
 @Component
 public class PasswordEncoder implements org.springframework.security.crypto.password.PasswordEncoder{
@@ -16,7 +17,10 @@ public class PasswordEncoder implements org.springframework.security.crypto.pass
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     /**
-     * 编码密码
+     * 将明文密码编码为 BCrypt 哈希串。
+     *
+     * @param rawPassword 明文密码
+     * @return 哈希后的密文
      */
     @Override
     public String encode(CharSequence rawPassword) {
@@ -24,13 +28,18 @@ public class PasswordEncoder implements org.springframework.security.crypto.pass
     }
 
     /**
-     * 检查密码是否匹配
+     * 校验明文密码是否与已存储的 BCrypt 哈希匹配。
+     *
+     * @param rawPassword      用户输入的明文
+     * @param encodedPassword  库中存储的哈希
+     * @return 匹配返回 {@code true}
      */
     @Override
     public boolean matches(CharSequence rawPassword, String encodedPassword) {
         return encoder.matches(rawPassword, encodedPassword);
     }
 
+    /** 本地调试入口：生成示例 BCrypt 哈希 */
     public static void main(String[] args) {
         BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
         System.out.println(bCryptPasswordEncoder.encode("111111"));

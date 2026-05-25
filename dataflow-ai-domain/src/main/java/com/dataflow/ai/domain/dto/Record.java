@@ -110,7 +110,9 @@ public class Record {
     }
 
     /**
-     * 转换为JSON字符串
+     * 将 data 字段手工拼接为简易 JSON 字符串（非完整 JSON 库实现）。
+     *
+     * @return JSON 风格字符串
      */
     public String toJson() {
         StringBuilder sb = new StringBuilder();
@@ -123,6 +125,7 @@ public class Record {
             first = false;
             sb.append("\"").append(entry.getKey()).append("\":");
             Object value = entry.getValue();
+            // 按 JSON 基本类型规则拼接字面量
             if (value == null) {
                 sb.append("null");
             } else if (value instanceof String) {
@@ -132,6 +135,7 @@ public class Record {
             } else if (value instanceof Boolean) {
                 sb.append(value);
             } else {
+                // 其他类型退化为字符串
                 sb.append("\"").append(value.toString()).append("\"");
             }
         }
@@ -139,6 +143,7 @@ public class Record {
         return sb.toString();
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -147,6 +152,7 @@ public class Record {
         return Objects.equals(data, record.data);
     }
 
+    /** {@inheritDoc} */
     @Override
     public int hashCode() {
         return Objects.hash(data);

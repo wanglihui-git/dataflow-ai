@@ -141,6 +141,7 @@ public class TransformContext {
         try {
             return (T) value;
         } catch (ClassCastException e) {
+            // 类型不匹配时回退默认值
             return defaultValue;
         }
     }

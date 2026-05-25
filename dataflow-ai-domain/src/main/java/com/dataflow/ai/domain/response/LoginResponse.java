@@ -15,9 +15,14 @@ import lombok.NoArgsConstructor;
 public class LoginResponse {
 
     /**
-     * JWT Token
+     * 访问令牌
      */
     private String token;
+
+    /**
+     * 刷新令牌
+     */
+    private String refreshToken;
 
     /**
      * 用户ID

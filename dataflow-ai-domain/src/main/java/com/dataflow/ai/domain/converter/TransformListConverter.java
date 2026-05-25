@@ -12,6 +12,7 @@ import java.util.List;
 @Converter
 public class TransformListConverter extends AbstractJsonConverter<List<Transform>> {
 
+    /** {@inheritDoc} */
     @Override
     protected TypeReference<List<Transform>> typeReference() {
         return new TypeReference<>() {};

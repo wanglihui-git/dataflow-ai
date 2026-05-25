@@ -3,7 +3,7 @@ package com.dataflow.ai.business.engine.sink.impl;
 import com.dataflow.ai.business.engine.orchestrator.ExecutionContext;
 import com.dataflow.ai.business.engine.exception.SinkException;
 import com.dataflow.ai.business.engine.sink.SinkWriter;
-import com.dataflow.ai.business.service.DataSourceService;
+import com.dataflow.ai.business.repository.DataSourceRepository;
 import com.dataflow.ai.domain.dto.DataBatch;
 import com.dataflow.ai.domain.dto.Record;
 import com.dataflow.ai.domain.entity.DataSource;
@@ -33,13 +33,22 @@ import java.util.*;
 public class CsvSinkWriter implements SinkWriter {
 
     @Resource
-    private DataSourceService dataSourceService;
+    private DataSourceRepository dataSourceRepository;
 
     @Resource
     private EncryptionService encryptionService;
 
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
+    /**
+     * 将数据批次写入目标存储。
+     *
+     * @param batch      待写入批次
+     * @param sinkConfig 目标配置
+     * @param context    执行上下文
+     * @return 实际写入的记录数
+     * @throws Exception 连接或写入失败时抛出
+     */
     @Override
     public long write(DataBatch batch, SinkConfig sinkConfig, ExecutionContext context) throws Exception {
         String dataSourceId = sinkConfig.getDataSourceId();
@@ -47,7 +56,7 @@ public class CsvSinkWriter implements SinkWriter {
         log.info("Writing to CSV sink: dataSourceId={}, batchSize={}", dataSourceId, batch.size());
 
         // 获取数据源配置
-        DataSource dataSource = dataSourceService.findById(dataSourceId)
+        DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new SinkException(
                         context.getRunId(), context.getPipeline().getId(),
                         dataSourceId, DataSourceType.CSV, null, null,
@@ -130,11 +139,22 @@ public class CsvSinkWriter implements SinkWriter {
         }
     }
 
+    /**
+     * 返回本写入器支持的目标类型标识。
+     *
+     * @return 类型名称字符串
+     */
     @Override
     public String getSupportedType() {
         return "CSV";
     }
 
+    /**
+     * 测试目标数据源是否可连接。
+     *
+     * @param dataSource 数据源实体
+     * @return 连接成功返回 true
+     */
     @Override
     public boolean testConnection(DataSource dataSource) {
         Map<String, Object> config = encryptionService.decrypt(dataSource.getConnectionConfig());

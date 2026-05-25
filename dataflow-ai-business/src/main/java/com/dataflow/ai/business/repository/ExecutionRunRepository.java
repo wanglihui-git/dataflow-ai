@@ -55,4 +55,15 @@ public interface ExecutionRunRepository {
      * 统计Pipeline的成功执行次数
      */
     long countByPipelineIdAndStatus(String pipelineId, ExecutionStatus status);
+
+    /**
+     * 按状态分页查询
+     */
+    org.springframework.data.domain.Page<ExecutionRun> findByStatus(
+            ExecutionStatus status, org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * 标记取消请求（持久化，跨实例可见）
+     */
+    void markCancelRequested(String runId);
 }

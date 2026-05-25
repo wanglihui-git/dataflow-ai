@@ -33,7 +33,7 @@ public interface AiHelperRepository {
     /**
      * 向量搜索相似指令
      */
-    List<AiHelper> searchByEmbedding(float[] embedding, double threshold, int limit);
+        List<AiHelper> searchByEmbedding(float[] embedding, double maxCosineDistance, int limit);
 
     /**
      * 保存

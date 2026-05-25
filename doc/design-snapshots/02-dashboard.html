@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>快照 02 - Dashboard</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <div class="sidebar">
+    <div style="color:#f8fafc;font-weight:600;margin-bottom:24px">数据流转换平台</div>
+    <div>Dashboard</div><div>Pipeline</div><div>数据源</div><div>运行任务</div><div>AI 助手</div>
+  </div>
+  <div class="main">
+    <h1>Dashboard <span style="font-size:14px;font-weight:400;color:#64748b">时间范围 · 快速新建</span></h1>
+    <div class="kpi">
+      <div class="card"><div class="label">用户数</div><div class="num">12</div></div>
+      <div class="card"><div class="label">活跃管道</div><div class="num">8</div></div>
+      <div class="card"><div class="label">24h 成功率</div><div class="num">92%</div></div>
+      <div class="card"><div class="label">队列</div><div class="num">2</div></div>
+    </div>
+    <div class="card"><div class="label">任务成功/失败趋势</div><div style="height:200px;background:#f1f5f9;border-radius:6px;margin-top:8px"></div></div>
+    <div class="card"><table><tr><th>运行 ID</th><th>管道</th><th>状态</th><th>触发者</th></tr>
+      <tr><td>run-001</td><td>etl-orders</td><td><span class="badge ok">SUCCESS</span></td><td>admin</td></tr></table></div>
+  </div>
+</body>
+</html>
