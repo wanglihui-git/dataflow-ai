@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8" /><title>快照 04 - Pipeline 编辑器</title><link rel="stylesheet" href="shared.css" /></head>
+<body style="margin:0">
+  <div style="padding:8px 12px;border-bottom:1px solid #e2e8f0;background:#fff;display:flex;justify-content:space-between">
+    <span>← 返回 · etl-orders</span>
+    <span><button>校验</button> <button>AI</button> <button style="background:#2563eb;color:#fff;border:none;padding:6px 12px;border-radius:4px">保存并发布</button> <button style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:4px">运行</button></span>
+  </div>
+  <div class="editor" style="height:calc(100vh - 48px)">
+    <div class="palette"><div class="label">组件库</div><div>字段映射</div><div>过滤</div><div>脚本</div></div>
+    <div class="canvas">
+      <div class="node">Source</div>
+      <div class="node">字段映射</div>
+      <div class="node">过滤</div>
+      <div class="node">Sink</div>
+      <div class="drawer"><strong>AI 辅助</strong><p style="font-size:13px;margin-top:8px">将金额保留两位小数...</p><button style="margin-top:12px;padding:8px;background:#2563eb;color:#fff;border:none;border-radius:4px">生成节点</button></div>
+    </div>
+    <div class="props"><div class="label">属性</div><p style="font-size:13px">节点：字段映射<br/>fieldMapping JSON</p></div>
+  </div>
+</body>
+</html>
